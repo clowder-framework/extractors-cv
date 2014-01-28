@@ -63,6 +63,8 @@ def create_image_section(inputfile, ext, host, fileid, key):
         gray = cv2.equalizeHist(gray)
         faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
         
+        logger.debug("No of faces") 
+        logger.debug(len(faces))
         #To save the section of an image,i.e., faces from the image 
         #i=0;
         #for each face detected, create a section corresponding to it and upload section information to server
@@ -77,7 +79,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
             # create section of an image
             
             url=host + 'api/sections?key=' + key
-            
+            logger.debug("url=%s",url)
             secdata={}
             secdata["file_id"]=fileid
             #print(type(fileid),type(x),type(y),type(w),type(h))
@@ -114,7 +116,9 @@ def create_image_section(inputfile, ext, host, fileid, key):
             
             url=host+'api/sections/'+ sectionid+'/tags?key=' + key
             mdata={}
-            mdata['tag']='FaceDetected'
+            mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
+            mdata["extractor_id"]="ncsa.cv"
+            logger.debug("tags: %s",json.dumps(mdata))
             rt = requests.post(url, headers=headers, data=json.dumps(mdata))
             rt.raise_for_status()
             logger.debug("[%s] created section and previews of type %s", fileid, ext)
@@ -136,7 +140,7 @@ def on_message(channel, method, header, body):
         jbody=json.loads(body)
 
         # key=jbody['key']
-        key='letmein'
+        key='r1ek3rs'
         host=jbody['host']
         #logger.debug("host[%s]=",host)
         fileid=jbody['id']
