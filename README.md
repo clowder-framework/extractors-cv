@@ -5,6 +5,8 @@
 
 All extractors here use **OpenCV** to extract information from images. You will need Python and OpenCV to be installed in your system.
 
+These extractors were developed and tested on Mac 64-bits. OpenCV pre-trainned classifiers are expected to be stored at /opt/local/share/OpenCV/haarcascades.
+
 
 ## Input
 An image file to extract information from. Input format must be supported by OpenCV.  
