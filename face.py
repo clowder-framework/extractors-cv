@@ -17,7 +17,7 @@ def main():
     global logger
 
     # name of receiver
-    receiver='ncsa.cv'
+    receiver='ncsa.cv.face'
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
@@ -118,7 +118,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
             url=host+'api/sections/'+ sectionid+'/tags?key=' + key
             mdata={}
             mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
-            mdata["extractor_id"]="ncsa.cv"
+            mdata["extractor_id"]="ncsa.cv.face"
             logger.debug("tags: %s",json.dumps(mdata))
             rt = requests.post(url, headers=headers, data=json.dumps(mdata))
             rt.raise_for_status()
@@ -126,7 +126,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
             url=host+'api/files/'+ fileid+'/tags?key=' + key
             mdata={}
             mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
-            mdata["extractor_id"]="ncsa.cv"
+            mdata["extractor_id"]="ncsa.cv.face"
             logger.debug("tags: %s",json.dumps(mdata))
             rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
             rtf.raise_for_status()
@@ -162,7 +162,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cv'
+        statusreport['extractor_id'] = 'ncsa.cv.face'
 
         # fetch data
 
