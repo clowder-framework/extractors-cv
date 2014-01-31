@@ -11,6 +11,7 @@ import os
 import itertools
 import numpy as np
 import cv2
+import time
 
 def main():
     global logger
@@ -121,6 +122,14 @@ def create_image_section(inputfile, ext, host, fileid, key):
             logger.debug("tags: %s",json.dumps(mdata))
             rt = requests.post(url, headers=headers, data=json.dumps(mdata))
             rt.raise_for_status()
+        if len(faces)>=1:
+            url=host+'api/files/'+ fileid+'/tags?key=' + key
+            mdata={}
+            mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
+            mdata["extractor_id"]="ncsa.cv"
+            logger.debug("tags: %s",json.dumps(mdata))
+            rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
+            rtf.raise_for_status()
             logger.debug("[%s] created section and previews of type %s", fileid, ext)
     finally:
         #os.remove(previewfile)     
@@ -133,6 +142,7 @@ def get_image_data(imagefile):
 
 def on_message(channel, method, header, body):
     global logger
+    statusreport = {}
 
     inputfile=None
     try:
@@ -144,40 +154,86 @@ def on_message(channel, method, header, body):
         host=jbody['host']
         #logger.debug("host[%s]=",host)
         fileid=jbody['id']
+        intermediatefileid=jbody['intermediateId']
         if not (host.endswith('/')):
             host += '/'
 
         # print what we are doing
         logger.debug("[%s] started processing", fileid)
+        # for status reports
+        statusreport['file_id'] = fileid
+        statusreport['extractor_id'] = 'ncsa.cv'
 
         # fetch data
+
+        statusreport['status'] = 'Downloading image file.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport)) 
+
         url=host + 'api/files/' + fileid + '?key=' + key
+        print  url
         r=requests.get(url, stream=True)
         r.raise_for_status()
+
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
 
+        
+        statusreport['status'] = 'Extracting face from image and creating a section.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
 
         # create previews
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
         create_image_section(inputfile, 'jpg', host, fileid, key)
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '90')
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '180')
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '270')
-        
+               
 
         # Ack
         channel.basic_ack(method.delivery_tag)
         logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     except:
         logger.exception("[%s] error processing", fileid)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     finally:
+        statusreport['status'] = 'DONE.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
         if inputfile is not None:
-            os.remove(inputfile)
+            try:
+                os.remove(inputfile)
+            except OSError:
+                pass
+            except UnboundLocalError:
+                pass    
 
 
 if __name__ == "__main__":
