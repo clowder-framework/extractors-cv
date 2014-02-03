@@ -64,10 +64,9 @@ def create_image_section(inputfile, ext, host, fileid, key):
         gray = cv2.equalizeHist(gray)
         faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
         
-        logger.debug("No of faces") 
-        logger.debug(len(faces))
+        logger.debug("Number of faces detected: "+str(len(faces))) 
+
         #To save the section of an image,i.e., faces from the image 
-        #i=0;
         #for each face detected, create a section corresponding to it and upload section information to server
         #create a preview for the section and upload the preview and its metadata
         for (x,y,w,h) in faces:

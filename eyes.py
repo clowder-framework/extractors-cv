@@ -11,6 +11,7 @@ import os
 import itertools
 import numpy as np
 import cv2
+import time
 
 def main():
     global logger
@@ -81,8 +82,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
         faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-        logger.debug("No of faces") 
-        logger.debug(len(faces))
+        logger.debug("Number of faces detected: "+str(len(faces))) 
 
         faces_all=[]
         eyes_all=[]
@@ -95,8 +95,6 @@ def create_image_section(inputfile, ext, host, fileid, key):
             cv2.imwrite(facefile, roi_color)
             roi_gray = gray[y:y+h, x:x+w]
             eyes=big_eyepair_cascade.detectMultiScale(roi_gray, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-            logger.debug("No of Eyes")
-            logger.debug(len(eyes))
         #   big_eyes=big_eye_cascade.detectMultiScale(roi_gray, minSize=(w/7, h/7), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
             if not len(eyes):
                 logger.debug("Trying to detect small eyes")
@@ -194,7 +192,8 @@ def get_image_data(imagefile):
 
 def on_message(channel, method, header, body):
     global logger
-
+    statusreport = {}
+    
     inputfile=None
     try:
         # parse body back from json
@@ -210,7 +209,16 @@ def on_message(channel, method, header, body):
 
         # print what we are doing
         logger.debug("[%s] started processing", fileid)
-
+        # for status reports
+        statusreport['file_id'] = fileid
+        statusreport['extractor_id'] = 'ncsa.cv.eyes'
+        statusreport['status'] = 'Downloading image file.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport)) 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
         r=requests.get(url, stream=True)
@@ -219,6 +227,15 @@ def on_message(channel, method, header, body):
         with os.fdopen(fd, "w") as f:
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
+
+        
+        statusreport['status'] = 'Extracting eyes from image and creating sections.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
 
 
         # create previews
@@ -234,9 +251,30 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     except:
         logger.exception("[%s] error processing", fileid)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     finally:
+        statusreport['status'] = 'DONE.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
         if inputfile is not None:
             os.remove(inputfile)
 

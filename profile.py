@@ -11,6 +11,7 @@ import os
 import itertools
 import numpy as np
 import cv2
+import time
 
 def main():
     global logger
@@ -126,6 +127,7 @@ def get_image_data(imagefile):
 
 def on_message(channel, method, header, body):
     global logger
+    statusreport = {}
 
     inputfile=None
     try:
@@ -142,6 +144,16 @@ def on_message(channel, method, header, body):
 
         # print what we are doing
         logger.debug("[%s] started processing", fileid)
+         # for status reports
+        statusreport['file_id'] = fileid
+        statusreport['extractor_id'] = 'ncsa.cv.profile'
+        statusreport['status'] = 'Downloading image file.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport)) 
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
@@ -151,6 +163,14 @@ def on_message(channel, method, header, body):
         with os.fdopen(fd, "w") as f:
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
+
+        statusreport['status'] = 'Extracting profile from image and creating a section.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
 
 
         # create previews
@@ -166,9 +186,31 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     except:
         logger.exception("[%s] error processing", fileid)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     finally:
+        statusreport['status'] = 'DONE.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
+
         if inputfile is not None:
             os.remove(inputfile)
 

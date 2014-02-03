@@ -11,6 +11,7 @@ import os
 import itertools
 import numpy as np
 import cv2
+import time
 
 def main():
     global logger
@@ -53,9 +54,9 @@ def main():
  
 
 
-def create_image_section(inputfile, ext, host, fileid, key):
+def detect_closeup(inputfile, ext, host, fileid, key):
     global logger
-    logger.debug("INSIDE: create_image_section")
+    logger.debug("INSIDE: detect_closeup")
     try:
 
         face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
@@ -122,6 +123,7 @@ def get_image_data(imagefile):
 
 def on_message(channel, method, header, body):
     global logger
+    statusreport = {}
 
     inputfile=None
     try:
@@ -138,6 +140,16 @@ def on_message(channel, method, header, body):
 
         # print what we are doing
         logger.debug("[%s] started processing", fileid)
+        # for status reports
+        statusreport['file_id'] = fileid
+        statusreport['extractor_id'] = 'ncsa.cv.closeup'
+        statusreport['status'] = 'Downloading image file.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport)) 
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
@@ -148,10 +160,19 @@ def on_message(channel, method, header, body):
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
 
+        
+        statusreport['status'] = 'Detecting closeup and tagging.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
+
 
         # create previews
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
-        create_image_section(inputfile, 'jpg', host, fileid, key)
+        detect_closeup(inputfile, 'jpg', host, fileid, key)
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '90')
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '180')
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '270')
@@ -162,9 +183,30 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     except:
         logger.exception("[%s] error processing", fileid)
+        statusreport['status'] = 'Error processing.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        channel.basic_publish(exchange='',
+                routing_key=header.reply_to,
+                properties=pika.BasicProperties(correlation_id = \
+                                                header.correlation_id),
+                body=json.dumps(statusreport)) 
     finally:
+        statusreport['status'] = 'DONE.'
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        channel.basic_publish(exchange='',
+                            routing_key=header.reply_to,
+                            properties=pika.BasicProperties(correlation_id = \
+                                                        header.correlation_id),
+                            body=json.dumps(statusreport))
         if inputfile is not None:
             os.remove(inputfile)
 
