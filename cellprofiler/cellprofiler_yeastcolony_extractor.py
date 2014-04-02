@@ -63,7 +63,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
     try:
        
         basefolder=os.path.dirname(os.path.realpath(__file__))
-        pipelinepath=os.path.join(basefolder, "ExampleYeastColonies_BTs.cp")
+        pipelinepath=os.path.join(basefolder, "ExampleYeastColonies_BT.cp")
         datasetinputfolder=os.path.join(basefolder, datasetid+"_yeast_input")
         datasetoutputfolder=os.path.join(basefolder, datasetid+"_yeast_output")
         
@@ -99,7 +99,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             logger.debug("[%s] cellprofiler pipeline processed", datasetid)
             for f in os.listdir(datasetoutputfolder):
                 print os.path.join(datasetoutputfolder,f)
-                if f.endswith(".csv") or f.endswith(".tiff"):
+                if f.endswith(".csv") or f.endswith(".png"):
                     # upload the file to the dataset
                     url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
                     r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')})
@@ -212,8 +212,8 @@ def on_message(channel, method, header, body):
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-        if inputfile is not None and os.path.isfile(inputfile):
-            os.remove(inputfile)
+        # if inputfile is not None and os.path.isfile(inputfile):
+        #     os.remove(inputfile)
 
 
 if __name__ == "__main__":

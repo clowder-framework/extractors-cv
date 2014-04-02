@@ -108,7 +108,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             logger.debug("[%s] cellprofiler pipeline processed", datasetid)
             for f in os.listdir(datasetoutputfolder):
                 print os.path.join(datasetoutputfolder,f)
-                if f.lower().endswith(".tif") or f.lower().endswith(".tiff"):
+                if f.lower().endswith(".csv") or f.lower().endswith(".tif") or f.lower().endswith(".tiff"):
                     # upload the file to the dataset
                     url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
                     r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')})

@@ -28,6 +28,8 @@ def main():
     # connect to rabitmq
     connection = pika.BlockingConnection()
 
+
+
     # connect to channel
     channel = connection.channel()
 
@@ -88,12 +90,13 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             subprocess.check_output(['CellProfiler.exe', '-c', '-r', '-i',  indir, '-o', datasetoutputfolder, '-p', pipelinepath], stderr=subprocess.STDOUT)
     
             logger.debug("[%s] cellprofiler pipeline processed", datasetid)
-            for f in sorted(os.listdir(datasetoutputfolder)):
-                print os.path.join(datasetoutputfolder,f)
-                if f.lower().endswith(".tif") or f.lower().endswith(".tiff"):
+            datasetoutputfolder2 = os.path.join(datasetoutputfolder,  datasetid+"_track_input")
+            for f in sorted(os.listdir(datasetoutputfolder2)):
+                print os.path.join(datasetoutputfolder2,f)
+                if f.lower().endswith(".csv") or f.lower().endswith(".png"):
                     # upload the file to the dataset
                     url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
-                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')})
+                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder2,f), 'rb')})
                     r.raise_for_status()
                     uploadedfileid = r.json()['id']
                     logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
