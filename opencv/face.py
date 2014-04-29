@@ -62,6 +62,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
         #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        
         if img is not None:
             gray = img
 
@@ -127,7 +128,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 url=host+'api/sections/'+ sectionid+'/tags?key=' + key
                 mdata={}
                 mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
-                mdata["extractor_id"]="ncsa.cv.face"
+                mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
                 rt = requests.post(url, headers=headers, data=json.dumps(mdata))
                 rt.raise_for_status()
@@ -135,7 +136,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 url=host+'api/files/'+ fileid+'/tags?key=' + key
                 mdata={}
                 mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
-                mdata["extractor_id"]="ncsa.cv.face"
+                mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
                 rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
                 rtf.raise_for_status()

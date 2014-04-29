@@ -15,7 +15,7 @@ import time
 
 def main():
     global logger
-
+    global receiver
     # name of receiver
     receiver='ncsa.cv.closeup'
 
@@ -58,58 +58,60 @@ def detect_closeup(inputfile, ext, host, fileid, key):
     global logger
     logger.debug("INSIDE: detect_closeup")
     try:
-
         face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         profile_face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
-
-
-        img = cv2.imread(inputfile)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
+       
+        #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
+        #profile_face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
         
-        imgh=len(gray)
-        imgw=len(gray[0])
-    
-        midCloseUp=False
-        fullCloseUp=False
-
-        faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(imgw/8, imgh/8), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-        for (x,y,w,h) in faces:
-            if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
-                fullCloseUp=True
-        for (x,y,w,h) in faces: 
-            if(w*h>=(imgw*imgh/8)): #this is a medium closeup
-                midCloseUp=True
+        img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        if img is not None:
+            gray=img
+            gray = cv2.equalizeHist(gray)
+            
+            imgh=len(gray)
+            imgw=len(gray[0])
         
-        profilefaces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10, minSize=(imgw/8, imgh/8))
-        for (x,y,w,h) in profilefaces:
-            if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
-                fullCloseUp=True
-        for (x,y,w,h) in profilefaces: 
-            if(w*h>=(imgw*imgh/8)): #this is a medium closeup
-                midCloseUp=True
+            midCloseUp=False
+            fullCloseUp=False
+
+            faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(imgw/8, imgh/8), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+            for (x,y,w,h) in faces:
+                if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
+                    fullCloseUp=True
+            for (x,y,w,h) in faces: 
+                if(w*h>=(imgw*imgh/8)): #this is a medium closeup
+                    midCloseUp=True
+            
+            profilefaces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10, minSize=(imgw/8, imgh/8))
+            for (x,y,w,h) in profilefaces:
+                if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
+                    fullCloseUp=True
+            for (x,y,w,h) in profilefaces: 
+                if(w*h>=(imgw*imgh/8)): #this is a medium closeup
+                    midCloseUp=True
 
 
-        headers={'Content-Type': 'application/json'}
-        if fullCloseUp:
-            url=host+'api/files/'+ fileid +'/tags?key=' + key
-            mdata={}
-            mdata["tags"]=["Full Close Up Automatically Detected"]
-            mdata["extractor_id"]="ncsa.cv.closeup"
-            logger.debug("tags: %s",json.dumps(mdata))
-            rt = requests.post(url, headers=headers, data=json.dumps(mdata))
-            rt.raise_for_status()
-            logger.debug("[%s] created section and previews of type %s", fileid, ext)
+            headers={'Content-Type': 'application/json'}
+            if fullCloseUp:
+                url=host+'api/files/'+ fileid +'/tags?key=' + key
+                mdata={}
+                mdata["tags"]=["Full Close Up Automatically Detected"]
+                mdata["extractor_id"]=receiver
+                logger.debug("tags: %s",json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt.raise_for_status()
+                logger.debug("[%s] created section and previews of type %s", fileid, ext)
 
-        elif midCloseUp:
-            url=host+'api/files/'+ fileid +'/tags?key=' + key
-            mdata={}
-            mdata["tags"]=["Mid Close Up Automatically Detected"]
-            mdata["extractor_id"]="ncsa.cv.closeup"
-            logger.debug("tags: %s",json.dumps(mdata))
-            rt = requests.post(url, headers=headers, data=json.dumps(mdata))
-            rt.raise_for_status()
-            logger.debug("[%s] created section and previews of type %s", fileid, ext)        
+            elif midCloseUp:
+                url=host+'api/files/'+ fileid +'/tags?key=' + key
+                mdata={}
+                mdata["tags"]=["Mid Close Up Automatically Detected"]
+                mdata["extractor_id"]=receiver
+                logger.debug("tags: %s",json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt.raise_for_status()
+                logger.debug("[%s] created section and previews of type %s", fileid, ext)        
     finally:
         #os.remove(previewfile)     
         logger.debug("done with closeups")  
@@ -142,9 +144,10 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cv.closeup'
+        statusreport['extractor_id'] = receiver
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -163,6 +166,7 @@ def on_message(channel, method, header, body):
         
         statusreport['status'] = 'Detecting closeup and tagging.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -185,6 +189,7 @@ def on_message(channel, method, header, body):
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -194,6 +199,7 @@ def on_message(channel, method, header, body):
         logger.exception("[%s] error processing", fileid)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -202,6 +208,7 @@ def on_message(channel, method, header, body):
     finally:
         statusreport['status'] = 'DONE.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \

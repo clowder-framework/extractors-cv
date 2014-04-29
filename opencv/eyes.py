@@ -15,7 +15,7 @@ import time
 
 def main():
     global logger
-
+    global receiver
     # name of receiver
     receiver='ncsa.cv.eyes'
 
@@ -25,8 +25,6 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     # connect to rabitmq
-    #parameters = pika.URLParameters('amqp://guest:guest@dts1.ncsa.illinois.edu:5672/%2F')
-    #connection = pika.BlockingConnection(parameters)
     connection = pika.BlockingConnection()
 
     # connect to channel
@@ -80,106 +78,130 @@ def create_image_section(inputfile, ext, host, fileid, key):
         right_eye_cascade=cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml')
 
 
-        img = cv2.imread(inputfile)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
-        faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-        logger.debug("Number of faces detected: "+str(len(faces))) 
+        #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
+        #big_eyepair_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_big.xml')
+        #small_eyepair_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_small.xml')
+        #left_eye_cascade=cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_lefteye_2splits.xml')
+        #right_eye_cascade=cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml')
 
-        faces_all=[]
-        eyes_all=[]
+        img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        #img = cv2.imread(inputfile)
+        #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        if img is not None:
+            gray = img
+            gray = cv2.equalizeHist(gray)
+            faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+            logger.debug("Number of faces detected: "+str(len(faces))) 
+
+            faces_all=[]
+            eyes_all=[]
 
 
-        for (x,y,w,h) in faces:
-            detected=False
-            faces_all.append([x, y, w, h])
-            roi_color = img[y:y+h, x:x+w]
-            cv2.imwrite(facefile, roi_color)
-            roi_gray = gray[y:y+h, x:x+w]
-            eyes=big_eyepair_cascade.detectMultiScale(roi_gray, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-        #   big_eyes=big_eye_cascade.detectMultiScale(roi_gray, minSize=(w/7, h/7), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-            if not len(eyes):
-                logger.debug("Trying to detect small eyes")
-                eyes=small_eyepair_cascade.detectMultiScale(roi_gray, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-            for (ex,ey,ew,eh) in eyes:
-                eyes_all.append([x+ex, y+ey, ew, eh])
-                roi_eyepair = img[y+ey:y+ey+eh, x+ex:x+ex+ew]
-                cv2.imwrite(sectionfile, roi_eyepair)
-                detected=True
-            if not len(eyes):
-                roi_eyes=roi_gray[0:len(roi_gray)/2,:]
-                righteyes=right_eye_cascade.detectMultiScale(roi_eyes, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-                lefteyes=left_eye_cascade.detectMultiScale(roi_eyes, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-                righteye=findbiggesteye(righteyes)
-                lefteye=findbiggesteye(lefteyes)
-                if not len(righteye) and not len(lefteye):
-                    continue
-                if not len(righteye):
-                    ex=lefteye[0]
-                    ey=lefteye[1]
-                    ew=lefteye[2]
-                    eh=lefteye[3]
-                elif not len(lefteye):
-                    ex=righteye[0]
-                    ey=righteye[1]
-                    ew=righteye[2]
-                    eh=righteye[3]
-                else:
-                    ex = min(righteye[0], lefteye[0])       
-                    ey = min(righteye[1], lefteye[1])
-                    ew = max(righteye[0]+righteye[2], lefteye[0]+lefteye[2])-ex
-                    eh = max(righteye[1]+righteye[3], lefteye[1]+lefteye[3])-ey
-                eyes_all.append([x+ex, y+ey, ew, eh])
-                roi_eyepair = img[y+ey:y+ey+eh, x+ex:x+ex+ew]
-                cv2.imwrite(sectionfile, roi_eyepair)
-                detected=True
-     
-            # create section of an image
-            if detected:
-                url=host + 'api/sections?key=' + key
-                logger.debug("url=%s",url)
-                secdata={}
-                secdata["file_id"]=fileid
-                #print(type(fileid),type(x),type(y),type(w),type(h))
-                secdata["area"]={"x":int(ex), "y":int(ey),"w":int(ew),"h":int(eh)}
-                
-                #logger.debug("section json [%s]",(json.dumps(secdata)))
-                
-                headers={'Content-Type': 'application/json'}
-               
-                r = requests.post(url,headers=headers, data=json.dumps(secdata))
-                r.raise_for_status()
-                
-                sectionid=r.json()['id']
-                logger.debug(("section id [%s]",sectionid))
+            for (x,y,w,h) in faces:
+                detected=False
+                faces_all.append([x, y, w, h])
+                roi_color = img[y:y+h, x:x+w]
+                cv2.imwrite(facefile, roi_color)
+                roi_gray = gray[y:y+h, x:x+w]
+                eyes=big_eyepair_cascade.detectMultiScale(roi_gray, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+            #   big_eyes=big_eye_cascade.detectMultiScale(roi_gray, minSize=(w/7, h/7), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+                if not len(eyes):
+                    logger.debug("Trying to detect small eyes")
+                    eyes=small_eyepair_cascade.detectMultiScale(roi_gray, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+                for (ex,ey,ew,eh) in eyes:
+                    eyes_all.append([x+ex, y+ey, ew, eh])
+                    roi_eyepair = img[y+ey:y+ey+eh, x+ex:x+ex+ew]
+                    cv2.imwrite(sectionfile, roi_eyepair)
+                    detected=True
+                if not len(eyes):
+                    roi_eyes=roi_gray[0:len(roi_gray)/2,:]
+                    righteyes=right_eye_cascade.detectMultiScale(roi_eyes, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+                    lefteyes=left_eye_cascade.detectMultiScale(roi_eyes, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+                    righteye=findbiggesteye(righteyes)
+                    lefteye=findbiggesteye(lefteyes)
+                    if not len(righteye) and not len(lefteye):
+                        continue
+                    if not len(righteye):
+                        ex=lefteye[0]
+                        ey=lefteye[1]
+                        ew=lefteye[2]
+                        eh=lefteye[3]
+                    elif not len(lefteye):
+                        ex=righteye[0]
+                        ey=righteye[1]
+                        ew=righteye[2]
+                        eh=righteye[3]
+                    else:
+                        ex = min(righteye[0], lefteye[0])       
+                        ey = min(righteye[1], lefteye[1])
+                        ew = max(righteye[0]+righteye[2], lefteye[0]+lefteye[2])-ex
+                        eh = max(righteye[1]+righteye[3], lefteye[1]+lefteye[3])-ey
+                    eyes_all.append([x+ex, y+ey, ew, eh])
+                    roi_eyepair = img[y+ey:y+ey+eh, x+ex:x+ex+ew]
+                    cv2.imwrite(sectionfile, roi_eyepair)
+                    detected=True
+         
+                # create section of an image
+                if detected:
+                    url=host + 'api/sections?key=' + key
+                    logger.debug("url=%s",url)
+                    secdata={}
+                    secdata["file_id"]=fileid
+                    #print(type(fileid),type(x),type(y),type(w),type(h))
+                    secdata["area"]={"x":int(ex), "y":int(ey),"w":int(ew),"h":int(eh)}
+                    
+                    #logger.debug("section json [%s]",(json.dumps(secdata)))
+                    
+                    headers={'Content-Type': 'application/json'}
+                   
+                    r = requests.post(url,headers=headers, data=json.dumps(secdata))
+                    r.raise_for_status()
+                    
+                    sectionid=r.json()['id']
+                    logger.debug(("section id [%s]",sectionid))
 
-                url=host + 'api/previews?key=' + key
-                rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
-                rc.raise_for_status()
-                previewid = rc.json()['id']
-                logger.debug("preview id=[%s]",rc.json()['id'])
+                    url=host + 'api/previews?key=' + key
+                    rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
+                    rc.raise_for_status()
+                    previewid = rc.json()['id']
+                    logger.debug("preview id=[%s]",rc.json()['id'])
 
-                imgdata={}
-                imgdata['section_id']=sectionid
-                imgdata['width']=str(ew)
-                imgdata['height']=str(eh)
-                
-                headers={'Content-Type': 'application/json'}
-                
-                url=host+'api/previews/'+ previewid + '/metadata?key=' + key
-                logger.debug("preview json [%s] ",json.dumps(imgdata))
-                rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
-                rp.raise_for_status()
-                
-                
-                url=host+'api/sections/'+ sectionid+'/tags?key=' + key
-                mdata={}
-                mdata["tags"]=["Human Eyes Automatically Detected"]
-                mdata["extractor_id"]="ncsa.cv.eyes"
-                logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
-                rt.raise_for_status()
-                logger.debug("[%s] created section and previews of type %s", fileid, ext)
+                    imgdata={}
+                    imgdata['section_id']=sectionid
+                    imgdata['width']=str(ew)
+                    imgdata['height']=str(eh)
+                    imgdata['extractor_id']=receiver
+                    
+                    headers={'Content-Type': 'application/json'}
+                    
+                    #url=host+'api/previews/'+ previewid + '/metadata?key=' + key
+                    #logger.debug("preview json [%s] ",json.dumps(imgdata))
+                    #rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
+                    #rp.raise_for_status()
+                    
+                    url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
+                    rp = requests.post(url, headers=headers, data=json.dumps(imgdata));
+                    rp.raise_for_status()
+                    
+                    url=host+'api/sections/'+ sectionid+'/tags?key=' + key
+                    mdata={}
+                    mdata["tags"]=["Human Eyes Automatically Detected"]
+                    mdata["extractor_id"]=receiver
+                    logger.debug("tags: %s",json.dumps(mdata))
+                    rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                    rt.raise_for_status()
+                    logger.debug("[%s] created section and previews of type %s", fileid, ext)
+
+                    
+                    url=host+'api/files/'+ fileid+'/tags?key=' + key
+                    mdata={}
+                    mdata["tags"]=["Human Eyes Automatically Detected"]
+                    mdata["extractor_id"]=receiver
+                    logger.debug("tags: %s",json.dumps(mdata))
+                    rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
+                    rtf.raise_for_status()
+                    logger.debug("[%s] created section and previews of type %s", fileid, ext)
     finally:
         #os.remove(previewfile)     
         os.remove(sectionfile)  
