@@ -58,7 +58,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
     (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
         #extract face from images using opencv face detector
-        face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
+        face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         img = cv2.imread(inputfile)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
@@ -192,13 +192,16 @@ def on_message(channel, method, header, body):
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
 
+        #Ack 
+        channel.basic_ack(method.delivery_tag)
+        
         # create previews
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
         create_image_section(inputfile, 'jpg', host, fileid, key)
                
 
         # Ack
-        channel.basic_ack(method.delivery_tag)
+        #channel.basic_ack(method.delivery_tag)
         logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)

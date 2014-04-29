@@ -71,11 +71,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
     (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
         #extract face from images using opencv face detector
-        face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
-        big_eyepair_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_big.xml')
-        small_eyepair_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_small.xml')
-        left_eye_cascade=cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_lefteye_2splits.xml')
-        right_eye_cascade=cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml')
+        face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
+        big_eyepair_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_big.xml')
+        small_eyepair_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_small.xml')
+        left_eye_cascade=cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_lefteye_2splits.xml')
+        right_eye_cascade=cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml')
 
 
         img = cv2.imread(inputfile)

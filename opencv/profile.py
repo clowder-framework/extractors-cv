@@ -60,7 +60,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
     (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
 
-        profile_face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
+        profile_face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
 
         img = cv2.imread(inputfile)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
