@@ -16,6 +16,7 @@ import digits
 def extract_digit(inputfile, host, fileid, key):
 	global logger
 	global model
+	global receiver
 
 	logger.debug("starting classification process")
 	
@@ -34,6 +35,7 @@ def extract_digit(inputfile, host, fileid, key):
 
 		url=host+'api/files/'+ fileid +'/metadata?key=' + key
 		mdata={}
+		mdata["extractor_id"]=receiver
 		mdata["basic_digitpy"]=resp
 
 		logger.debug("metadata: %s",json.dumps(mdata))
@@ -49,6 +51,7 @@ def extract_digit(inputfile, host, fileid, key):
 def main():
 	global logger
 	global model
+	global receiver
 
 	# install_folder=os.path.dirname(os.path.realpath(__file__))
 	model = digits.SVM(C=2.67, gamma=5.383)
@@ -94,6 +97,7 @@ def main():
 
 def on_message(channel, method, header, body):
 	global logger
+	global receiver
 	statusreport = {}
 
 	inputfile=None
@@ -113,7 +117,7 @@ def on_message(channel, method, header, body):
 		logger.debug("[%s] started processing", fileid)
 		# for status reports
 		statusreport['file_id'] = fileid
-		statusreport['extractor_id'] = 'ncsa.image.digitpy'
+		statusreport['extractor_id'] = receiver
 		statusreport['status'] = 'Downloading image file.'
 		statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')

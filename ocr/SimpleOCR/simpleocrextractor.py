@@ -13,6 +13,7 @@ import time
 
 def main():
     global logger
+    global receiver
 
     # name of receiver
     receiver='ncsa.image.ocr'
@@ -82,6 +83,7 @@ def clean_word(word):
 
 def extract_OCR(inputfile, host, fileid, key):
     global logger
+    global receiver
     logger.debug("INSIDE: extract_OCR")
     
     try:
@@ -91,6 +93,7 @@ def extract_OCR(inputfile, host, fileid, key):
 
         url=host+'api/files/'+ fileid +'/metadata?key=' + key
         mdata={}
+        mdata["extractor_id"]=receiver
         mdata["ocr_simple"]=[ocrtext]
 
         logger.debug("metadata: %s",json.dumps(mdata))
@@ -104,6 +107,7 @@ def extract_OCR(inputfile, host, fileid, key):
 
 def on_message(channel, method, header, body):
     global logger
+    global receiver
     statusreport = {}
 
     inputfile=None
@@ -123,7 +127,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.image.ocr'
+        statusreport['extractor_id'] = receiver
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
