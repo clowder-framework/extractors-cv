@@ -175,12 +175,9 @@ def on_message(channel, method, header, body):
 
 
         # create previews
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
-        detect_closeup(inputfile, 'jpg', host, fileid, key)
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '90')
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '180')
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '270')
         
+        detect_closeup(inputfile, 'jpg', host, fileid, key)
+               
 
         # Ack
         channel.basic_ack(method.delivery_tag)
@@ -215,7 +212,12 @@ def on_message(channel, method, header, body):
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
         if inputfile is not None:
-            os.remove(inputfile)
+            try:
+                os.remove(inputfile)
+            except OSError:
+                pass
+            except UnboundLocalError:
+                pass  
 
 
 if __name__ == "__main__":

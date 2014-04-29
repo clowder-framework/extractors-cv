@@ -204,8 +204,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     logger.debug("[%s] created section and previews of type %s", fileid, ext)
     finally:
         #os.remove(previewfile)     
-        os.remove(sectionfile)  
-        os.remove(facefile)  
+        #os.remove(sectionfile)  
+        if os.path.isfile(sectionfile):     
+            os.remove(sectionfile) 
+        if os.path.isfile(facefile):
+            os.remove(facefile)  
 
 
 def get_image_data(imagefile):
@@ -305,7 +308,13 @@ def on_message(channel, method, header, body):
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
         if inputfile is not None:
-            os.remove(inputfile)
+            try:
+                os.remove(inputfile)
+            except OSError:
+                pass
+            except UnboundLocalError:
+                pass  
+            
 
 
 if __name__ == "__main__":
