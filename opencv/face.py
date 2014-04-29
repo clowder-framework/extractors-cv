@@ -17,6 +17,7 @@ def main():
     global logger
 
     # name of receiver
+    global receiver
     receiver='ncsa.cv.face'
 
     # configure the logging system
@@ -25,8 +26,8 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     # connect to rabitmq
+    
     connection = pika.BlockingConnection()
-
     # connect to channel
     channel = connection.channel()
 
@@ -58,81 +59,91 @@ def create_image_section(inputfile, ext, host, fileid, key):
     (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
         #extract face from images using opencv face detector
+        #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
-        img = cv2.imread(inputfile)
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.equalizeHist(gray)
-        faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-        
-        logger.debug("Number of faces detected: "+str(len(faces))) 
+        img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        if img is not None:
+            gray = img
 
-        #To save the section of an image,i.e., faces from the image 
-        #for each face detected, create a section corresponding to it and upload section information to server
-        #create a preview for the section and upload the preview and its metadata
-        for (x,y,w,h) in faces:
-            roi_color = img[y:y+h, x:x+w]
-            
-                  
-            cv2.imwrite(sectionfile, roi_color)
-            
 
-            # create section of an image
+            # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            gray = cv2.equalizeHist(gray)
+            faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(0, 0), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
             
-            url=host + 'api/sections?key=' + key
-            logger.debug("url=%s",url)
-            secdata={}
-            secdata["file_id"]=fileid
-            #print(type(fileid),type(x),type(y),type(w),type(h))
-            secdata["area"]={"x":int(x), "y":int(y),"w":int(w),"h":int(h)}
-            
-            #logger.debug("section json [%s]",(json.dumps(secdata)))
-            
-            headers={'Content-Type': 'application/json'}
-           
-            r = requests.post(url,headers=headers, data=json.dumps(secdata))
-            r.raise_for_status()
-            
-            sectionid=r.json()['id']
-            logger.debug(("section id [%s]",sectionid))
+            logger.debug("Number of faces detected: "+str(len(faces))) 
 
-            url=host + 'api/previews?key=' + key
-            rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
-            rc.raise_for_status()
-            previewid = rc.json()['id']
-            logger.debug("preview id=[%s]",rc.json()['id'])
+            #To save the section of an image,i.e., faces from the image 
+            #for each face detected, create a section corresponding to it and upload section information to server
+            #create a preview for the section and upload the preview and its metadata
+            for (x,y,w,h) in faces:
+                roi_color = img[y:y+h, x:x+w]
+                
+                      
+                cv2.imwrite(sectionfile, roi_color)
+                
 
-            imgdata={}
-            imgdata['section_id']=sectionid
-            imgdata['width']=str(w)
-            imgdata['height']=str(h)
-            
-            headers={'Content-Type': 'application/json'}
-            
-            url=host+'api/previews/'+ previewid + '/metadata?key=' + key
-            logger.debug("preview json [%s] ",json.dumps(imgdata))
-            rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
-            rp.raise_for_status()
-            
-            
-            url=host+'api/sections/'+ sectionid+'/tags?key=' + key
-            mdata={}
-            mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
-            mdata["extractor_id"]="ncsa.cv.face"
-            logger.debug("tags: %s",json.dumps(mdata))
-            rt = requests.post(url, headers=headers, data=json.dumps(mdata))
-            rt.raise_for_status()
-        if len(faces)>=1:
-            url=host+'api/files/'+ fileid+'/tags?key=' + key
-            mdata={}
-            mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
-            mdata["extractor_id"]="ncsa.cv.face"
-            logger.debug("tags: %s",json.dumps(mdata))
-            rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
-            rtf.raise_for_status()
-            logger.debug("[%s] created section and previews of type %s", fileid, ext)
+                # create section of an image
+                
+                url=host + 'api/sections?key=' + key
+                logger.debug("url=%s",url)
+                secdata={}
+                secdata["file_id"]=fileid
+                #print(type(fileid),type(x),type(y),type(w),type(h))
+                secdata["area"]={"x":int(x), "y":int(y),"w":int(w),"h":int(h)}
+                
+                #logger.debug("section json [%s]",(json.dumps(secdata)))
+                
+                headers={'Content-Type': 'application/json'}
+               
+                r = requests.post(url,headers=headers, data=json.dumps(secdata))
+                r.raise_for_status()
+                
+                sectionid=r.json()['id']
+                logger.debug(("section id [%s]",sectionid))
+
+                url=host + 'api/previews?key=' + key
+                rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
+                rc.raise_for_status()
+                previewid = rc.json()['id']
+                logger.debug("preview id=[%s]",rc.json()['id'])
+
+                imgdata={}
+                imgdata['section_id']=sectionid
+                imgdata['width']=str(w)
+                imgdata['height']=str(h)
+                imgdata['extractor_id']=receiver
+                headers={'Content-Type': 'application/json'}
+                
+                #url=host+'api/previews/'+ previewid + '/metadata?key=' + key
+                #logger.debug("preview json [%s] ",json.dumps(imgdata))
+                #rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
+                #rp.raise_for_status()
+                url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
+                rp = requests.post(url, headers=headers, data=json.dumps(imgdata));
+                rp.raise_for_status()
+
+                
+                
+                url=host+'api/sections/'+ sectionid+'/tags?key=' + key
+                mdata={}
+                mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
+                mdata["extractor_id"]="ncsa.cv.face"
+                logger.debug("tags: %s",json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt.raise_for_status()
+            if len(faces)>=1:
+                url=host+'api/files/'+ fileid+'/tags?key=' + key
+                mdata={}
+                mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
+                mdata["extractor_id"]="ncsa.cv.face"
+                logger.debug("tags: %s",json.dumps(mdata))
+                rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rtf.raise_for_status()
+                logger.debug("[%s] created section and previews of type %s", fileid, ext)
     finally:
-        #os.remove(previewfile)     
-        os.remove(sectionfile)  
+        #os.remove(previewfile)
+        if os.path.isfile(sectionfile):     
+            os.remove(sectionfile)  
 def get_image_data(imagefile):
     global logger
 
@@ -167,6 +178,7 @@ def on_message(channel, method, header, body):
 
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -186,27 +198,26 @@ def on_message(channel, method, header, body):
         
         statusreport['status'] = 'Extracting face from image and creating a section.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
 
-        #Ack 
-        channel.basic_ack(method.delivery_tag)
-        
         # create previews
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
         create_image_section(inputfile, 'jpg', host, fileid, key)
                
 
         # Ack
-        #channel.basic_ack(method.delivery_tag)
+        channel.basic_ack(method.delivery_tag)
         logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -216,6 +227,7 @@ def on_message(channel, method, header, body):
         logger.exception("[%s] error processing", fileid)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -224,6 +236,7 @@ def on_message(channel, method, header, body):
     finally:
         statusreport['status'] = 'DONE.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
