@@ -163,6 +163,7 @@ def on_message(channel, method, header, body):
         statusreport['extractor_id'] = 'ncsa.cellprofiler.human'
         statusreport['status'] = 'Downloading input file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -181,6 +182,7 @@ def on_message(channel, method, header, body):
 
         statusreport['status'] = 'Detecting cellprofiler pipeline metadata and associating with file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -197,7 +199,8 @@ def on_message(channel, method, header, body):
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", datasetid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -207,7 +210,8 @@ def on_message(channel, method, header, body):
     except:
         logger.exception("[%s] error processing", datasetid)
         statusreport['status'] = 'Error processing.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -216,6 +220,7 @@ def on_message(channel, method, header, body):
     finally:
         statusreport['status'] = 'DONE.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
