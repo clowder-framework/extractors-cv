@@ -120,7 +120,7 @@ function numbers=handwritten_numbers_extract(imagename, outputfile)
 
     fileID = fopen(outputfile,'w');
     for n=numbers
-    	fprintf(fileID,'%d\n', n);
+        fprintf(fileID,'%d\n', n);
     end
     fclose(fileID);
 
@@ -186,10 +186,11 @@ function img=clean_line(oimg, fillgap, minlen, linethickness)
     [maxw maxh] = size(oimg);
     for k = 1:length(lines)
        if isfield(lines(k), 'point1')
-           x0=min(lines(k).point1(1),lines(k).point2(1));
-           y0=max(0, min(lines(k).point1(2),lines(k).point2(2))-linethickness);
-           x1=max(lines(k).point1(1),lines(k).point2(1));
-           y1=min(max(lines(k).point1(2),lines(k).point2(2))+linethickness, maxh);
+           x0=max(1, floor(min(lines(k).point1(1),lines(k).point2(1))));
+           y0=max(1, floor(min(lines(k).point1(2),lines(k).point2(2))-linethickness));
+           x1=max(1, floor(max(lines(k).point1(1),lines(k).point2(1))));
+           y1=max(1, floor(min(max(lines(k).point1(2),lines(k).point2(2))+linethickness, maxh)));
+           
            img(y0:y1,x0:x1)=0;
            
        end
