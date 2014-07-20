@@ -58,7 +58,9 @@ def main():
 def create_image_section(inputfile, ext, host, fileid, key):
     global logger
     logger.debug("INSIDE: create_image_section")
-    (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
+
+    sectionfile=None
+
     try:
 
         #profile_face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
@@ -75,6 +77,8 @@ def create_image_section(inputfile, ext, host, fileid, key):
             faces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10)
             for (x,y,w,h) in faces:
                 roi_color = img[y:y+h, x:x+w]
+                (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
+                os.close(fd)
                 cv2.imwrite(sectionfile, roi_color)
 
                 url=host + 'api/sections?key=' + key
@@ -95,8 +99,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 logger.debug(("section id [%s]",sectionid))
 
                 url=host + 'api/previews?key=' + key
-                rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
+                f = open(sectionfile, 'rb')
+                files={"File" : f}
+                rc = requests.post(url, files=files)
                 rc.raise_for_status()
+                f.close()
                 previewid = rc.json()['id']
                 logger.debug("preview id=[%s]",rc.json()['id'])
 
@@ -134,8 +141,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
 
     finally:
-        #os.remove(previewfile)
-        if os.path.isfile(sectionfile):     
+        if sectionfile is not None and os.path.isfile(sectionfile):     
             os.remove(sectionfile)     
        
         
@@ -237,13 +243,11 @@ def on_message(channel, method, header, body):
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
 
-        if inputfile is not None:
+        if inputfile is not None and os.path.isfile(inputfile):
             try:
                 os.remove(inputfile)
-            except OSError:
-                pass
-            except UnboundLocalError:
-                pass  
+            except OSError as oserror:
+                logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
             
 
 
