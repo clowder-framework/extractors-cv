@@ -11,6 +11,8 @@ import os
 import itertools
 import time
 
+sslVerify=False
+
 def main():
     global logger
     global receiver
@@ -82,7 +84,7 @@ def clean_word(word):
 
 
 def extract_OCR(inputfile, host, fileid, key):
-    global logger
+    global logger, sslVerify
     global receiver
     logger.debug("INSIDE: extract_OCR")
     
@@ -97,7 +99,7 @@ def extract_OCR(inputfile, host, fileid, key):
         mdata["ocr_simple"]=[ocrtext]
 
         logger.debug("metadata: %s",json.dumps(mdata))
-        rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+        rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
         rt.raise_for_status()
         logger.debug("[%s] simple ocr performed successfully", fileid)
 
@@ -106,7 +108,7 @@ def extract_OCR(inputfile, host, fileid, key):
         
 
 def on_message(channel, method, header, body):
-    global logger
+    global logger, sslVerify
     global receiver
     statusreport = {}
 
@@ -139,7 +141,7 @@ def on_message(channel, method, header, body):
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:

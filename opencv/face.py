@@ -13,6 +13,8 @@ import numpy as np
 import cv2
 import time
 
+sslVerify=False
+
 def main():
     global logger
 
@@ -54,7 +56,7 @@ def main():
     connection.close()
  
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger
+    global logger, sslVerify
     logger.debug("INSIDE: create_image_section")
     (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
@@ -96,14 +98,14 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 
                 headers={'Content-Type': 'application/json'}
                
-                r = requests.post(url,headers=headers, data=json.dumps(secdata))
+                r = requests.post(url,headers=headers, data=json.dumps(secdata), verify=sslVerify)
                 r.raise_for_status()
                 
                 sectionid=r.json()['id']
                 logger.debug(("section id [%s]",sectionid))
 
                 url=host + 'api/previews?key=' + key
-                rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
+                rc = requests.post(url, files={"File" : open(sectionfile, 'rb')}, verify=sslVerify)
                 rc.raise_for_status()
                 previewid = rc.json()['id']
                 logger.debug("preview id=[%s]",rc.json()['id'])
@@ -117,10 +119,10 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 
                 #url=host+'api/previews/'+ previewid + '/metadata?key=' + key
                 #logger.debug("preview json [%s] ",json.dumps(imgdata))
-                #rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
+                #rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verifysslVerify)
                 #rp.raise_for_status()
                 url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
-                rp = requests.post(url, headers=headers, data=json.dumps(imgdata));
+                rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verify=sslVerify);
                 rp.raise_for_status()
 
                 
@@ -130,7 +132,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
             if len(faces)>=1:
                 url=host+'api/files/'+ fileid+'/tags?key=' + key
@@ -138,7 +140,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rtf = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rtf.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
     finally:
@@ -152,7 +154,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger
+    global logger, sslVerify
     statusreport = {}
 
     inputfile=None
@@ -188,7 +190,7 @@ def on_message(channel, method, header, body):
 
         url=host + 'api/files/' + fileid + '?key=' + key
         print  url
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
 
         (fd, inputfile)=tempfile.mkstemp()
