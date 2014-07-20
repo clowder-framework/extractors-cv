@@ -67,8 +67,10 @@ def findbiggesteye(eyes):
 def create_image_section(inputfile, ext, host, fileid, key):
     global logger
     logger.debug("INSIDE: create_image_section")
-    (fd, facefile)=tempfile.mkstemp(suffix='.' + ext)
-    (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
+
+    facefile=None
+    sectionfile=None
+
     try:
         #extract face from images using opencv face detector
         face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
@@ -99,6 +101,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
 
 
             for (x,y,w,h) in faces:
+                (fd, facefile)=tempfile.mkstemp(suffix='.' + ext)
+                os.close(fd)
+                (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
+                os.close(fd)
+
                 detected=False
                 faces_all.append([x, y, w, h])
                 roi_color = img[y:y+h, x:x+w]
@@ -162,8 +169,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     logger.debug(("section id [%s]",sectionid))
 
                     url=host + 'api/previews?key=' + key
-                    rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
+                    f = open(sectionfile, 'rb')
+                    files={"File" : f}
+                    rc = requests.post(url, files=files)
                     rc.raise_for_status()
+                    f.close()
                     previewid = rc.json()['id']
                     logger.debug("preview id=[%s]",rc.json()['id'])
 
@@ -202,12 +212,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
                     rtf.raise_for_status()
                     logger.debug("[%s] created section and previews of type %s", fileid, ext)
+
     finally:
-        #os.remove(previewfile)     
-        #os.remove(sectionfile)  
-        if os.path.isfile(sectionfile):     
+        if sectionfile is not None and os.path.isfile(sectionfile):     
             os.remove(sectionfile) 
-        if os.path.isfile(facefile):
+        if facefile is not None and os.path.isfile(facefile):
             os.remove(facefile)  
 
 
@@ -307,13 +316,12 @@ def on_message(channel, method, header, body):
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-        if inputfile is not None:
+        if inputfile is not None and os.path.isfile(inputfile):
             try:
                 os.remove(inputfile)
-            except OSError:
-                pass
-            except UnboundLocalError:
-                pass  
+            except OSError as oserror:
+                logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
+
             
 
 

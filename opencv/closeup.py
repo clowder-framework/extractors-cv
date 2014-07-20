@@ -211,13 +211,11 @@ def on_message(channel, method, header, body):
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-        if inputfile is not None:
+        if inputfile is not None and os.path.isfile(inputfile):
             try:
                 os.remove(inputfile)
-            except OSError:
-                pass
-            except UnboundLocalError:
-                pass  
+            except OSError as oserror:
+                logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
 
 
 if __name__ == "__main__":
