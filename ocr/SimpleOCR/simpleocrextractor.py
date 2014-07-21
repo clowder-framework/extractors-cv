@@ -59,9 +59,8 @@ def ocr(filename, tmpfilename):
     try:
         subprocess.call(["tesseract", filename, tmpfilename]) 
         tmpfile="./"+tmpfilename+".txt"
-        f = open(tmpfile, 'r')
-        text = f.read()
-        f.close()
+        with open(tmpfile, 'r') as f:
+            text = f.read()
     finally:
         os.remove(tmpfile)
         return clean_text(text)
