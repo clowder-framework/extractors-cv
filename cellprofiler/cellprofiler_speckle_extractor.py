@@ -154,7 +154,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                 
         
 def on_message(channel, method, header, body):
-    global logger
+    global logger, receiver
     statusreport = {}
 
     inputfile=None
@@ -176,7 +176,7 @@ def on_message(channel, method, header, body):
 
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cellprofiler.speckle'
+        statusreport['extractor_id'] = receiver
         statusreport['status'] = 'Downloading input file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
