@@ -13,6 +13,7 @@ import time
 import zipfile
 import os.path
 import shutil
+import csv
 
 def main():
     global logger
@@ -111,6 +112,28 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                     uploadedfileid = r.json()['id']
                     logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
      
+            mdata = {}
+            mdata["extractor_id"]=receiver
+            for f in os.listdir(datasetoutputfolder):
+                filemeta={}
+                filepath = os.path.join(datasetoutputfolder,f)
+                if f.endswith(".csv"):
+                    metarows=[]
+                    with open(filepath, 'rb') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        header = reader.next()
+                        for row in reader:
+                            metarow={}
+                            for cell in range(0, len(row)-1):
+                                metarow[header[cell]]=row[cell]
+                            metarows.append(metarow)
+                    metafield=f[f.rindex('_')+1:f.rindex('.')]
+                    mdata[metafield]=metarows
+            
+            url=host+'api/files/'+ fileid +'/metadata?key=' + key
+            rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+            rt.raise_for_status()
+
 
             logger.debug("[%s] cellprofiler pipeline results posted", datasetid)
 
