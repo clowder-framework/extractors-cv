@@ -125,7 +125,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 
                 #url=host+'api/previews/'+ previewid + '/metadata?key=' + key
                 #logger.debug("preview json [%s] ",json.dumps(imgdata))
-                #rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verifysslVerify)
+                #rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verify=sslVerify)
                 #rp.raise_for_status()
                 url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
                 rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verify=sslVerify);
