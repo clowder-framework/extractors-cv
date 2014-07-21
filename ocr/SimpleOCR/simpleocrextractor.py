@@ -62,7 +62,8 @@ def ocr(filename, tmpfilename):
         with open(tmpfile, 'r') as f:
             text = f.read()
     finally:
-        os.remove(tmpfile)
+        if tmpfile is not None and os.path.isfile(tmpfile):
+            os.remove(tmpfile)
         return clean_text(text)
 
 def clean_text(text):
