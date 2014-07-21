@@ -169,31 +169,28 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     logger.debug(("section id [%s]",sectionid))
 
                     url=host + 'api/previews?key=' + key
-                    f = open(sectionfile, 'rb')
-                    files={"File" : f}
-                    rc = requests.post(url, files=files)
-                    rc.raise_for_status()
-                    f.close()
+                    # upload preview image
+                    with open(sectionfile, 'rb') as f:
+                        files={"File" : f}
+                        rc = requests.post(url, files=files)
+                        rc.raise_for_status()
                     previewid = rc.json()['id']
                     logger.debug("preview id=[%s]",rc.json()['id'])
 
+                    # associate uploaded image with section
                     imgdata={}
                     imgdata['section_id']=sectionid
-                    imgdata['width']=str(ew)
-                    imgdata['height']=str(eh)
+                    imgdata['width']=str(w)
+                    imgdata['height']=str(h)
                     imgdata['extractor_id']=receiver
-                    
+                
                     headers={'Content-Type': 'application/json'}
-                    
-                    #url=host+'api/previews/'+ previewid + '/metadata?key=' + key
-                    #logger.debug("preview json [%s] ",json.dumps(imgdata))
-                    #rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
-                    #rp.raise_for_status()
-                    
-                    url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
+                    url = host + 'api/previews/' + previewid + '/metadata?key=' + key
+                    # url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
                     rp = requests.post(url, headers=headers, data=json.dumps(imgdata));
                     rp.raise_for_status()
                     
+
                     url=host+'api/sections/'+ sectionid+'/tags?key=' + key
                     mdata={}
                     mdata["tags"]=["Human Eyes Automatically Detected"]
