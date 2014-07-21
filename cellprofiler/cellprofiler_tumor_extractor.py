@@ -16,7 +16,7 @@ import shutil
 import csv
 
 def main():
-    global logger
+    global logger, receiver
 
     # name of receiver
     receiver='ncsa.cellprofiler.tumor'
@@ -58,7 +58,7 @@ def main():
 
 
 def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
-    global logger
+    global logger, receiver
     logger.debug("Running cellprofiler dataset tumor extractor")
     # (fd, thumbnailfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
@@ -130,6 +130,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                     metafield=f[f.rindex('_')+1:f.rindex('.')]
                     mdata[metafield]=metarows
             
+            headers={'Content-Type': 'application/json'}
             url=host+'api/files/'+ fileid +'/metadata?key=' + key
             rt = requests.post(url, headers=headers, data=json.dumps(mdata))
             rt.raise_for_status()
