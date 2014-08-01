@@ -13,6 +13,8 @@ import numpy as np
 import cv2
 import time
 
+sslVerify=False
+
 def main():
     global logger
     global receiver
@@ -56,6 +58,8 @@ def main():
 
 def detect_closeup(inputfile, ext, host, fileid, key):
     global logger
+    global sslVerify
+
     logger.debug("INSIDE: detect_closeup")
     try:
         face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
@@ -99,7 +103,7 @@ def detect_closeup(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Full Close Up Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
 
@@ -109,7 +113,7 @@ def detect_closeup(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Mid Close Up Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)        
     finally:
@@ -125,6 +129,8 @@ def get_image_data(imagefile):
 
 def on_message(channel, method, header, body):
     global logger
+    global sslVerify
+    
     statusreport = {}
 
     inputfile=None
@@ -156,7 +162,7 @@ def on_message(channel, method, header, body):
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:

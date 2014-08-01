@@ -13,10 +13,13 @@ import time
 import cv2
 import digits
 
+sslVerify=False
+
 def extract_digit(inputfile, host, fileid, key):
 	global logger
 	global model
 	global receiver
+	global sslVerify
 
 	logger.debug("starting classification process")
 	
@@ -39,7 +42,7 @@ def extract_digit(inputfile, host, fileid, key):
 		mdata["basic_digitpy"]=resp
 
 		logger.debug("metadata: %s",json.dumps(mdata))
-		rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+		rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
 		rt.raise_for_status()
 		logger.debug("[%s] finished running classifier", fileid)
 
@@ -98,6 +101,8 @@ def main():
 def on_message(channel, method, header, body):
 	global logger
 	global receiver
+	global sslVerify
+	
 	statusreport = {}
 
 	inputfile=None
@@ -130,7 +135,7 @@ def on_message(channel, method, header, body):
 
 		# fetch data
 		url=host + 'api/files/' + fileid + '?key=' + key
-		r=requests.get(url, stream=True)
+		r=requests.get(url, stream=True, verify=sslVerify)
 		r.raise_for_status()
 		(fd, inputfile)=tempfile.mkstemp()
 		with os.fdopen(fd, "w") as f:

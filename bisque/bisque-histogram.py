@@ -13,6 +13,7 @@ import time
 import xmltodict
 from xml.dom.minidom import parse, parseString
 
+sslVerify=False
 
 def main():
     global logger
@@ -96,6 +97,7 @@ def call_bisque(filename):
 
 def extract_bisque(inputfile, host, fileid, key):
     global logger
+    global sslVerify
     logger.debug("INSIDE: extract_Bisque")
     
     try:
@@ -108,7 +110,7 @@ def extract_bisque(inputfile, host, fileid, key):
         mdata["bisque_histogram"]=[bisquedict]
 
         # logger.debug("metadata: %s",json.dumps(mdata))
-        rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+        rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
         rt.raise_for_status()
         logger.debug("[%s] Bisque histogram extractor performed successfully", fileid)
 
@@ -119,6 +121,8 @@ def extract_bisque(inputfile, host, fileid, key):
 def on_message(channel, method, header, body):
     global logger
     global receiver
+    global sslVerify
+    
     statusreport = {}
 
     inputfile=None
@@ -150,7 +154,7 @@ def on_message(channel, method, header, body):
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:

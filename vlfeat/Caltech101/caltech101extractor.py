@@ -12,10 +12,13 @@ import itertools
 import time
 from subprocess import Popen, PIPE
 
+sslVerify=False
+
 def extract_caltech101_category(inputfile, host, fileid, key):
 	global logger
 	global receiver
 	global matlab_process
+	global sslVerify
 
 	logger.debug("starting classification process")
 	
@@ -46,7 +49,7 @@ def extract_caltech101_category(inputfile, host, fileid, key):
 		mdata["basic_caltech101_score"]=[score]
 
 		logger.debug("metadata: %s",json.dumps(mdata))
-		rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+		rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
 		rt.raise_for_status()
 		logger.debug("[%s] finished running classifier", fileid)
 
@@ -134,6 +137,7 @@ def main():
 def on_message(channel, method, header, body):
 	global logger
 	global receiver
+	global sslVerify
 	statusreport = {}
 
 	inputfile=None
@@ -165,7 +169,7 @@ def on_message(channel, method, header, body):
 
 		# fetch data
 		url=host + 'api/files/' + fileid + '?key=' + key
-		r=requests.get(url, stream=True)
+		r=requests.get(url, stream=True, verify=sslVerify)
 		r.raise_for_status()
 		(fd, inputfile)=tempfile.mkstemp()
 		with os.fdopen(fd, "w") as f:

@@ -15,6 +15,8 @@ import os.path
 import shutil
 import csv
 
+sslVerify=False
+
 def main():
     global logger, receiver
 
@@ -59,6 +61,8 @@ def main():
 
 def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
     global logger, receiver
+    global sslVerify
+
     logger.debug("Running cellprofiler speckle dataset extractor")
     # (fd, thumbnailfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
@@ -103,7 +107,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                 if f.endswith(".csv") or f.endswith(".tiff"):
                     # upload the file to the dataset
                     url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
-                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')})
+                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')}, verify=sslVerify)
                     r.raise_for_status()
                     uploadedfileid = r.json()['id']
                     logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
@@ -129,7 +133,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             
             headers={'Content-Type': 'application/json'}
             url=host+'api/files/'+ fileid +'/metadata?key=' + key
-            rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+            rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
             rt.raise_for_status()
      
 
@@ -155,6 +159,8 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
         
 def on_message(channel, method, header, body):
     global logger, receiver
+    global sslVerify
+    
     statusreport = {}
 
     inputfile=None
@@ -189,7 +195,7 @@ def on_message(channel, method, header, body):
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:

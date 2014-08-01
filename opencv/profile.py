@@ -13,6 +13,8 @@ import numpy as np
 import cv2
 import time
 
+sslVerify=False
+
 def main():
     global logger
     global receiver
@@ -57,6 +59,8 @@ def main():
 
 def create_image_section(inputfile, ext, host, fileid, key):
     global logger
+    global sslVerify
+
     logger.debug("INSIDE: create_image_section")
 
     sectionfile=None
@@ -92,7 +96,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 
                 headers={'Content-Type': 'application/json'}
                
-                r = requests.post(url,headers=headers, data=json.dumps(secdata))
+                r = requests.post(url,headers=headers, data=json.dumps(secdata), verify=sslVerify)
                 r.raise_for_status()
                 
                 sectionid=r.json()['id']
@@ -102,7 +106,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 # upload preview image
                 with open(sectionfile, 'rb') as f:
                     files={"File" : f}
-                    rc = requests.post(url, files=files)
+                    rc = requests.post(url, files=files, verify=sslVerify)
                     rc.raise_for_status()
                 previewid = rc.json()['id']
                 logger.debug("preview id=[%s]",rc.json()['id'])
@@ -117,7 +121,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 headers={'Content-Type': 'application/json'}
                 url = host + 'api/previews/' + previewid + '/metadata?key=' + key
                 # url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
-                rp = requests.post(url, headers=headers, data=json.dumps(imgdata));
+                rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verify=sslVerify);
                 rp.raise_for_status()
                 
 
@@ -126,7 +130,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Human Profile Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
             if len(faces)>=1:
@@ -135,7 +139,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Human Profile Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rtf = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rtf.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
 
@@ -153,6 +157,8 @@ def get_image_data(imagefile):
 
 def on_message(channel, method, header, body):
     global logger
+    global sslVerify
+    
     statusreport = {}
 
     inputfile=None
@@ -184,7 +190,7 @@ def on_message(channel, method, header, body):
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:
