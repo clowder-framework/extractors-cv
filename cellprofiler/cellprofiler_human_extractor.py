@@ -177,9 +177,8 @@ def on_message(channel, method, header, body):
     try:
         # parse body back from json
         jbody=json.loads(body)
-
-        # key=jbody['key']
-        key='r1ek3rs'
+        
+        key=jbody['key']
         host=jbody['host']
         logger.debug("host[%s]=",host)
         fileid=jbody['id']
