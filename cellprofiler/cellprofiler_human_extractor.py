@@ -32,8 +32,6 @@ def main():
     # connect to rabitmq
     connection = pika.BlockingConnection()
 
-
-
     # connect to channel
     channel = connection.channel()
 
@@ -182,7 +180,7 @@ def on_message(channel, method, header, body):
         # parse body back from json
         jbody=json.loads(body)
         
-        key=jbody['key']
+        key=jbody['secretKey']
         host=jbody['host']
         logger.debug("host[%s]=",host)
         fileid=jbody['id']
