@@ -162,7 +162,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger, sslVerify
+    global logger, receiver, sslVerify
     statusreport = {}
 
     inputfile=None
@@ -181,7 +181,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cv.face'
+        statusreport['extractor_id'] = receiver
 
         # fetch data
 

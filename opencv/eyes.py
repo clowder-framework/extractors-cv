@@ -228,7 +228,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger
+    global logger, receiver
     statusreport = {}
     
     inputfile=None
@@ -246,7 +246,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cv.eyes'
+        statusreport['extractor_id'] = receiver
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
