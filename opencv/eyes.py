@@ -69,7 +69,7 @@ def findbiggesteye(eyes):
 
 
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger
+    global logger, receiver
     logger.debug("INSIDE: create_image_section")
 
     facefile=None

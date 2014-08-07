@@ -62,7 +62,7 @@ def main():
 
 
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger
+    global logger, receiver
     global sslVerify
 
     logger.debug("INSIDE: create_image_section")
@@ -160,7 +160,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger
+    global logger, receiver
     global sslVerify
     
     statusreport = {}

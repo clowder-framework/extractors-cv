@@ -60,7 +60,7 @@ def main():
     connection.close()
  
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger, sslVerify
+    global logger, receiver, sslVerify
     logger.debug("INSIDE: create_image_section")
     
     sectionfile=None

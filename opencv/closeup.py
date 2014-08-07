@@ -61,7 +61,7 @@ def main():
 
 
 def detect_closeup(inputfile, ext, host, fileid, key):
-    global logger
+    global logger, receiver
     global sslVerify
 
     logger.debug("INSIDE: detect_closeup")
@@ -132,7 +132,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger
+    global logger, receiver
     global sslVerify
     
     statusreport = {}
