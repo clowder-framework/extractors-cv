@@ -224,9 +224,6 @@ def on_message(channel, method, header, body):
         extract_cellprofiler(inputfile, host, fileid, datasetid, key)
         
 
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", datasetid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", datasetid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -259,6 +256,11 @@ def on_message(channel, method, header, body):
                             body=json.dumps(statusreport))
         if inputfile is not None and os.path.isfile(inputfile):
             os.remove(inputfile)
+
+        # Ack
+        channel.basic_ack(method.delivery_tag)
+        logger.debug("[%s] finished processing", datasetid)
+
 
 
 if __name__ == "__main__":

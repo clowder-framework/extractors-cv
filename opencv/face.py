@@ -214,10 +214,6 @@ def on_message(channel, method, header, body):
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
         create_image_section(inputfile, 'jpg', host, fileid, key)
                
-
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -253,6 +249,10 @@ def on_message(channel, method, header, body):
             except OSError as oserror:
                 logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
 
+
+        # Ack
+        channel.basic_ack(method.delivery_tag)
+        logger.debug("[%s] finished processing", fileid)
 
 
 if __name__ == "__main__":

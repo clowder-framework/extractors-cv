@@ -161,9 +161,6 @@ def on_message(channel, method, header, body):
         extract_OCR(inputfile, host, fileid, key)
         
 
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -195,6 +192,10 @@ def on_message(channel, method, header, body):
                             body=json.dumps(statusreport))
         if inputfile is not None:
             os.remove(inputfile)
+            
+        # Ack
+        channel.basic_ack(method.delivery_tag)
+        logger.debug("[%s] finished processing", fileid)
 
 
 if __name__ == "__main__":
