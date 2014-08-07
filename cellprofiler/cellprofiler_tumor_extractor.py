@@ -31,8 +31,6 @@ def main():
     # connect to rabitmq
     connection = pika.BlockingConnection()
 
-
-
     # connect to channel
     channel = connection.channel()
 
@@ -45,11 +43,15 @@ def main():
     # connect queue and exchange
     channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.multi.files-zipped.#')
 
-    # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
-
+    # setting prefetch count to 1 as workarround pika 0.9.14
+    channel.basic_qos(prefetch_count=1)
+    
     # start listening
     logger.info("Waiting for messages. To exit press CTRL+C")
+    
+    # create listener
+    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
