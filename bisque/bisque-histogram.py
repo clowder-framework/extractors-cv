@@ -21,10 +21,12 @@ def main():
 
     global bisqueuser
     global bisquepassword
+    global bisqueserver
 
     bisqueuser=''
     bisquepassword=''
-    
+    bisqueserver=''
+
     # name of receiver
     receiver='ncsa.bisque.histogram'
 
@@ -76,7 +78,7 @@ def call_bisque(filename):
     global bisquepassword
     
     histdict ={}
-    posturl = 'http://bisque.ece.ucsb.edu/import/transfer'
+    posturl = bisqueserver+'/import/transfer'
     files = {'file': open(filename, 'rb')}
     r = requests.post(posturl, files=files , auth=(bisqueuser, bisquepassword))
 
@@ -87,7 +89,7 @@ def call_bisque(filename):
         imageuniq = imagelist[0].attributes['resource_uniq'].value
 
 
-        r = requests.get('http://bisque.ece.ucsb.edu/image_service/'+imageuniq+'?histogram', auth=(bisqueuser, bisquepassword))
+        r = requests.get(bisqueserver+'/image_service/'+imageuniq+'?histogram', auth=(bisqueuser, bisquepassword))
 
         histdict = xmltodict.parse(r.text) #dict containing xml fields
         # histjson = json.dumps(histdict) #json object

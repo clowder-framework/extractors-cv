@@ -21,9 +21,12 @@ def main():
     global receiver
     global bisqueuser
     global bisquepassword
+    global bisqueserver
 
     bisqueuser=''
     bisquepassword=''
+    bisqueserver=''
+
     # name of receiver
     receiver='ncsa.bisque.metadata'
 
@@ -38,6 +41,7 @@ def main():
     # # connect to rabbitmq running on server
     # parameters = pika.URLParameters('amqp://'+username+':'+password+'@'+servername+':'+portnum+'/%2F') #portnum=5672
     # connection = pika.BlockingConnection(parameters)
+
 
     # connect to channel
     channel = connection.channel()
@@ -72,9 +76,10 @@ def main():
 def call_bisque(filename):
     global bisqueuser
     global bisquepassword
+    global bisqueserver
     
     metadict ={}
-    posturl = 'http://bisque.ece.ucsb.edu/import/transfer'
+    posturl = bisqueserver+'/import/transfer'
     files = {'file': open(filename, 'rb')}
     r = requests.post(posturl, files=files , auth=(bisqueuser, bisquepassword))
 
@@ -85,7 +90,7 @@ def call_bisque(filename):
         imageuniq = imagelist[0].attributes['resource_uniq'].value
 
 
-        r = requests.get('http://bisque.ece.ucsb.edu/image_service/'+imageuniq+'?meta', auth=(bisqueuser, bisquepassword))
+        r = requests.get(bisqueserver+'/image_service/'+imageuniq+'?meta', auth=(bisqueuser, bisquepassword))
 
         metadict = xmltodict.parse(r.text) #dict containing xml fields
         # metajson = json.dumps(metadict) #json object
