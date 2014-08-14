@@ -76,6 +76,7 @@ def main():
 def call_bisque(filename):
     global bisqueuser
     global bisquepassword
+    global bisqueserver
     
     histdict ={}
     posturl = bisqueserver+'/import/transfer'
