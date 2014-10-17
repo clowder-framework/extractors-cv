@@ -62,7 +62,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
         #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
         img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        
+        img_color = cv2.imread(inputfile)
         if img is not None:
             gray = img
 
@@ -77,36 +77,33 @@ def create_image_section(inputfile, ext, host, fileid, key):
             #for each face detected, create a section corresponding to it and upload section information to server
             #create a preview for the section and upload the preview and its metadata
             for (x,y,w,h) in faces:
-                roi_color = img[y:y+h, x:x+w]
-                
+                #roi_color = img[y:y+h, x:x+w]                
+                roi_color = img_color[y:y+h, x:x+w]                
                       
-                cv2.imwrite(sectionfile, roi_color)
-                
+                cv2.imwrite(sectionfile, roi_color)                
 
-                # create section of an image
+                # create section of an image, add to sections mongo collection                
                 
                 url=host + 'api/sections?key=' + key
                 logger.debug("url=%s",url)
                 secdata={}
                 secdata["file_id"]=fileid
                 #print(type(fileid),type(x),type(y),type(w),type(h))
-                secdata["area"]={"x":int(x), "y":int(y),"w":int(w),"h":int(h)}
-                
-                #logger.debug("section json [%s]",(json.dumps(secdata)))
-                
+                secdata["area"]={"x":int(x), "y":int(y),"w":int(w),"h":int(h)}                
+                #logger.debug("section json [%s]",(json.dumps(secdata)))                
                 headers={'Content-Type': 'application/json'}
-               
                 r = requests.post(url,headers=headers, data=json.dumps(secdata))
-                r.raise_for_status()
-                
+                r.raise_for_status()                
                 sectionid=r.json()['id']
-                logger.debug(("section id [%s]",sectionid))
-
+                logger.debug("section id = [%s]",sectionid)
+                
+                
+                # add new line to to previews.files
                 url=host + 'api/previews?key=' + key
                 rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
                 rc.raise_for_status()
                 previewid = rc.json()['id']
-                logger.debug("preview id=[%s]",rc.json()['id'])
+                logger.debug("preview id = [%s]",rc.json()['id'])
 
                 imgdata={}
                 imgdata['section_id']=sectionid
@@ -132,6 +129,17 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 logger.debug("tags: %s",json.dumps(mdata))
                 rt = requests.post(url, headers=headers, data=json.dumps(mdata))
                 rt.raise_for_status()
+                
+                # submit preview for indexing in Medici
+                index = {}
+                index['section_id'] = sectionid
+                index['preview_id'] = previewid      
+                headers={'Content-Type': 'application/json'}
+                url = host + 'api/indexes' + '?key=' + key #this will call api.Indexes.index()
+                r = requests.post(url, headers=headers, data=json.dumps(index));
+                r.raise_for_status()
+                logger.debug("submitted for indexing: Section " + sectionid + " with Preview " + previewid)
+             
             if len(faces)>=1:
                 url=host+'api/files/'+ fileid+'/tags?key=' + key
                 mdata={}
