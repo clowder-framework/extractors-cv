@@ -12,35 +12,37 @@ import itertools
 import numpy as np
 import cv2
 import time
+from config import *
 
-sslVerify=False
 
 def main():
     global logger
-    global receiver
-
-    # name of receiver
-    receiver='ncsa.cv.profile'
+    global extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
-    logger = logging.getLogger(receiver)
+    logger = logging.getLogger(extractorName)
     logger.setLevel(logging.DEBUG)
 
-    # connect to rabitmq
-    connection = pika.BlockingConnection()
+    # connect to rabbitmq using input username and password
+    if (rabbitmqUsername is None or rabbitmqPassword is None):
+        connection = pika.BlockingConnection()
+    else:
+        credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+        parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
+        connection = pika.BlockingConnection(parameters)
 
     # connect to channel
     channel = connection.channel()
 
     # declare the exchange
-    channel.exchange_declare(exchange='medici', exchange_type='topic', durable=True)
+    channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
 
     # declare the queue
-    channel.queue_declare(queue=receiver, durable=True)
+    channel.queue_declare(queue=extractorName, durable=True)
 
     # connect queue and exchange
-    channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.image.#')
+    channel.queue_bind(queue=extractorName, exchange=exchange, routing_key=messageType)
 
     # setting prefetch count to 1 as workarround pika 0.9.14
     channel.basic_qos(prefetch_count=1)
@@ -49,7 +51,7 @@ def main():
     logger.info("Waiting for messages. To exit press CTRL+C")
 
     # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    channel.basic_consume(on_message, queue=extractorName, no_ack=False)
 
     try:
         channel.start_consuming()
@@ -61,96 +63,66 @@ def main():
  
 
 
-def create_image_section(inputfile, ext, host, fileid, key):
-    global logger, receiver
-    global sslVerify
+def detect_closeup(inputfile, ext, host, fileid, key):
+    global logger, extractorName
+    global sslVerify, face_cascade_path, profileface_cascade_path
 
-    logger.debug("INSIDE: create_image_section")
-
-    sectionfile=None
-
+    logger.debug("INSIDE: detect_closeup")
     try:
-
-        #profile_face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
-
-        profile_face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
-
-        img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        
-        #gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        if img is not None:
-            gray = img
-            gray = cv2.equalizeHist(gray)
-
-            faces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10)
-            for (x,y,w,h) in faces:
-                roi_color = img[y:y+h, x:x+w]
-                (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
-                os.close(fd)
-                cv2.imwrite(sectionfile, roi_color)
-
-                url=host + 'api/sections?key=' + key
-                logger.debug("url=%s",url)
-                secdata={}
-                secdata["file_id"]=fileid
-                #print(type(fileid),type(x),type(y),type(w),type(h))
-                secdata["area"]={"x":int(x), "y":int(y),"w":int(w),"h":int(h)}
-                
-                #logger.debug("section json [%s]",(json.dumps(secdata)))
-                
-                headers={'Content-Type': 'application/json'}
+        face_cascade = cv2.CascadeClassifier(face_cascade_path)
+        profile_face_cascade = cv2.CascadeClassifier(profileface_cascade_path)
                
-                r = requests.post(url,headers=headers, data=json.dumps(secdata), verify=sslVerify)
-                r.raise_for_status()
-                
-                sectionid=r.json()['id']
-                logger.debug(("section id [%s]",sectionid))
-
-                url=host + 'api/previews?key=' + key
-                # upload preview image
-                with open(sectionfile, 'rb') as f:
-                    files={"File" : f}
-                    rc = requests.post(url, files=files, verify=sslVerify)
-                    rc.raise_for_status()
-                previewid = rc.json()['id']
-                logger.debug("preview id=[%s]",rc.json()['id'])
-
-                # associate uploaded image with section
-                imgdata={}
-                imgdata['section_id']=sectionid
-                imgdata['width']=str(w)
-                imgdata['height']=str(h)
-                imgdata['extractor_id']=receiver
+        img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        if img is not None:
+            gray=img
+            gray = cv2.equalizeHist(gray)
             
-                headers={'Content-Type': 'application/json'}
-                url = host + 'api/previews/' + previewid + '/metadata?key=' + key
-                # url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
-                rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verify=sslVerify);
-                rp.raise_for_status()
-                
+            imgh=len(gray)
+            imgw=len(gray[0])
+        
+            midCloseUp=False
+            fullCloseUp=False
 
-                url=host+'api/sections/'+ sectionid+'/tags?key=' + key
+            faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(imgw/8, imgh/8), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
+            for (x,y,w,h) in faces:
+                if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
+                    fullCloseUp=True
+            for (x,y,w,h) in faces: 
+                if(w*h>=(imgw*imgh/8)): #this is a medium closeup
+                    midCloseUp=True
+            
+            profilefaces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10, minSize=(imgw/8, imgh/8))
+            for (x,y,w,h) in profilefaces:
+                if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
+                    fullCloseUp=True
+            for (x,y,w,h) in profilefaces: 
+                if(w*h>=(imgw*imgh/8)): #this is a medium closeup
+                    midCloseUp=True
+
+
+            headers={'Content-Type': 'application/json'}
+            if fullCloseUp:
+                url=host+'api/files/'+ fileid +'/tags?key=' + key
                 mdata={}
-                mdata["tags"]=["Human Profile Automatically Detected"]
-                mdata["extractor_id"]=receiver
+                mdata["tags"]=["Full Close Up Automatically Detected"]
+                mdata["extractor_id"]=extractorName
                 logger.debug("tags: %s",json.dumps(mdata))
                 rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
-            if len(faces)>=1:
-                url=host+'api/files/'+ fileid+'/tags?key=' + key
-                mdata={}
-                mdata["tags"]=["Human Profile Automatically Detected"]
-                mdata["extractor_id"]=receiver
-                logger.debug("tags: %s",json.dumps(mdata))
-                rtf = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
-                rtf.raise_for_status()
-                logger.debug("[%s] created section and previews of type %s", fileid, ext)
 
+            elif midCloseUp:
+                url=host+'api/files/'+ fileid +'/tags?key=' + key
+                mdata={}
+                mdata["tags"]=["Mid Close Up Automatically Detected"]
+                mdata["extractor_id"]=extractorName
+                logger.debug("tags: %s",json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
+                rt.raise_for_status()
+                logger.debug("[%s] created section and previews of type %s", fileid, ext)        
     finally:
-        if sectionfile is not None and os.path.isfile(sectionfile):     
-            os.remove(sectionfile)     
-       
+        #os.remove(previewfile)     
+        logger.debug("done with closeups")  
         
 
 def get_image_data(imagefile):
@@ -160,7 +132,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger, receiver
+    global logger, extractorName
     global sslVerify
     
     statusreport = {}
@@ -178,9 +150,9 @@ def on_message(channel, method, header, body):
 
         # print what we are doing
         logger.debug("[%s] started processing", fileid)
-         # for status reports
+        # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = receiver
+        statusreport['extractor_id'] = extractorName
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
@@ -199,7 +171,8 @@ def on_message(channel, method, header, body):
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
 
-        statusreport['status'] = 'Extracting profile from image and creating a section.'
+        
+        statusreport['status'] = 'Detecting closeup and tagging.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
@@ -210,13 +183,9 @@ def on_message(channel, method, header, body):
 
 
         # create previews
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
-        create_image_section(inputfile, 'jpg', host, fileid, key)
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '90')
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '180')
-        #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key, '-rotate', '270')
         
-
+        detect_closeup(inputfile, 'jpg', host, fileid, key)
+               
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -246,13 +215,12 @@ def on_message(channel, method, header, body):
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-
         if inputfile is not None and os.path.isfile(inputfile):
             try:
                 os.remove(inputfile)
             except OSError as oserror:
                 logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
-            
+
         # Ack
         channel.basic_ack(method.delivery_tag)
         logger.debug("[%s] finished processing", fileid)

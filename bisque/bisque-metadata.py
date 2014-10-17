@@ -9,17 +9,26 @@ import tempfile
 import subprocess
 import os
 import itertools
-import numpy as np
-import cv2
 import time
+import xmltodict
+from xml.dom.minidom import parse, parseString
 
 sslVerify=False
+
 
 def main():
     global logger
     global receiver
+    global bisqueuser
+    global bisquepassword
+    global bisqueserver
+
+    bisqueuser=''
+    bisquepassword=''
+    bisqueserver=''
+
     # name of receiver
-    receiver='ncsa.cv.closeup'
+    receiver='ncsa.bisque.metadata'
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
@@ -28,6 +37,11 @@ def main():
 
     # connect to rabitmq
     connection = pika.BlockingConnection()
+
+    # # connect to rabbitmq running on server
+    # parameters = pika.URLParameters('amqp://'+username+':'+password+'@'+servername+':'+portnum+'/%2F') #portnum=5672
+    # connection = pika.BlockingConnection(parameters)
+
 
     # connect to channel
     channel = connection.channel()
@@ -43,7 +57,7 @@ def main():
 
     # setting prefetch count to 1 as workarround pika 0.9.14
     channel.basic_qos(prefetch_count=1)
-
+    
     # start listening
     logger.info("Waiting for messages. To exit press CTRL+C")
 
@@ -59,82 +73,64 @@ def main():
     connection.close()
  
 
+def call_bisque(filename):
+    global bisqueuser
+    global bisquepassword
+    global bisqueserver
+    
+    metadict ={}
+    posturl = bisqueserver+'/import/transfer'
+    files = {'file': open(filename, 'rb')}
+    r = requests.post(posturl, files=files , auth=(bisqueuser, bisquepassword))
 
-def detect_closeup(inputfile, ext, host, fileid, key):
-    global logger, receiver
-    global sslVerify
-
-    logger.debug("INSIDE: detect_closeup")
-    try:
-        face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
-        profile_face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
-       
-        #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
-        #profile_face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
-        
-        img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        if img is not None:
-            gray=img
-            gray = cv2.equalizeHist(gray)
-            
-            imgh=len(gray)
-            imgw=len(gray[0])
-        
-            midCloseUp=False
-            fullCloseUp=False
-
-            faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(imgw/8, imgh/8), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
-            for (x,y,w,h) in faces:
-                if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
-                    fullCloseUp=True
-            for (x,y,w,h) in faces: 
-                if(w*h>=(imgw*imgh/8)): #this is a medium closeup
-                    midCloseUp=True
-            
-            profilefaces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10, minSize=(imgw/8, imgh/8))
-            for (x,y,w,h) in profilefaces:
-                if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
-                    fullCloseUp=True
-            for (x,y,w,h) in profilefaces: 
-                if(w*h>=(imgw*imgh/8)): #this is a medium closeup
-                    midCloseUp=True
+    if(r.status_code==200):
+        xmldoc = parseString(r.text)
+        imagelist =  xmldoc.getElementsByTagName('image')
+        imageuri = imagelist[0].attributes['uri'].value
+        imageuniq = imagelist[0].attributes['resource_uniq'].value
 
 
-            headers={'Content-Type': 'application/json'}
-            if fullCloseUp:
-                url=host+'api/files/'+ fileid +'/tags?key=' + key
-                mdata={}
-                mdata["tags"]=["Full Close Up Automatically Detected"]
-                mdata["extractor_id"]=receiver
-                logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
-                rt.raise_for_status()
-                logger.debug("[%s] created section and previews of type %s", fileid, ext)
+        r = requests.get(bisqueserver+'/image_service/'+imageuniq+'?meta', auth=(bisqueuser, bisquepassword))
 
-            elif midCloseUp:
-                url=host+'api/files/'+ fileid +'/tags?key=' + key
-                mdata={}
-                mdata["tags"]=["Mid Close Up Automatically Detected"]
-                mdata["extractor_id"]=receiver
-                logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
-                rt.raise_for_status()
-                logger.debug("[%s] created section and previews of type %s", fileid, ext)        
-    finally:
-        #os.remove(previewfile)     
-        logger.debug("done with closeups")  
-        
+        metadict = xmltodict.parse(r.text) #dict containing xml fields
+        # metajson = json.dumps(metadict) #json object
 
-def get_image_data(imagefile):
+        r = requests.delete(imageuri, auth=(bisqueuser, bisquepassword))
+
+    return metadict['resource']#metadict
+    
+    
+
+
+def extract_bisque(inputfile, host, fileid, key):
     global logger
-
-    text=subprocess.check_output(['identify', imagefile], stderr=subprocess.STDOUT)
-    return text
-
-def on_message(channel, method, header, body):
-    global logger, receiver
     global sslVerify
     
+    logger.debug("INSIDE: extract_Bisque")
+    
+    try:
+        bisquedict = call_bisque(inputfile)
+
+        headers={'Content-Type': 'application/json'}
+
+        url=host+'api/files/'+ fileid +'/metadata?key=' + key
+        mdata={}
+        mdata["bisque_metadata"]=[bisquedict]
+
+        # logger.debug("metadata: %s",json.dumps(mdata))
+        rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
+        rt.raise_for_status()
+        logger.debug("[%s] Bisque metadata extractor performed successfully", fileid)
+
+    finally:
+        logger.debug("[%s] done with Bisque metadata extractor", fileid)  
+        
+
+def on_message(channel, method, header, body):
+    global logger
+    global receiver
+    global sslVerify
+
     statusreport = {}
 
     inputfile=None
@@ -155,7 +151,7 @@ def on_message(channel, method, header, body):
         statusreport['extractor_id'] = receiver
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -171,10 +167,9 @@ def on_message(channel, method, header, body):
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
 
-        
-        statusreport['status'] = 'Detecting closeup and tagging.'
+        statusreport['status'] = 'calling Bisque and associating results with file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -182,15 +177,15 @@ def on_message(channel, method, header, body):
                             body=json.dumps(statusreport))
 
 
-        # create previews
+
+        extract_bisque(inputfile, host, fileid, key)
         
-        detect_closeup(inputfile, 'jpg', host, fileid, key)
-               
+
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -199,8 +194,8 @@ def on_message(channel, method, header, body):
     except:
         logger.exception("[%s] error processing", fileid)
         statusreport['status'] = 'Error processing.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -209,17 +204,15 @@ def on_message(channel, method, header, body):
     finally:
         statusreport['status'] = 'DONE.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-        if inputfile is not None and os.path.isfile(inputfile):
-            try:
-                os.remove(inputfile)
-            except OSError as oserror:
-                logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
+        if inputfile is not None:
+            os.remove(inputfile)
+
 
         # Ack
         channel.basic_ack(method.delivery_tag)

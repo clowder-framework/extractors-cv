@@ -12,34 +12,36 @@ import itertools
 import numpy as np
 import cv2
 import time
-
-sslVerify=False
+from config import *
 
 def main():
     global logger
-    global receiver
-    # name of receiver
-    receiver='ncsa.cv.eyes'
+    global extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
-    logger = logging.getLogger(receiver)
+    logger = logging.getLogger(extractorName)
     logger.setLevel(logging.DEBUG)
 
-    # connect to rabitmq
-    connection = pika.BlockingConnection()
+    # connect to rabbitmq using input username and password
+    if (rabbitmqUsername is None or rabbitmqPassword is None):
+        connection = pika.BlockingConnection()
+    else:
+        credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+        parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
+        connection = pika.BlockingConnection(parameters)
 
     # connect to channel
     channel = connection.channel()
 
     # declare the exchange
-    channel.exchange_declare(exchange='medici', exchange_type='topic', durable=True)
+    channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
 
     # declare the queue
-    channel.queue_declare(queue=receiver, durable=True)
+    channel.queue_declare(queue=extractorName, durable=True)
 
     # connect queue and exchange
-    channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.image.#')
+    channel.queue_bind(queue=extractorName, exchange=exchange, routing_key=messageType)
 
     # setting prefetch count to 1 as workarround pika 0.9.14
     channel.basic_qos(prefetch_count=1)
@@ -48,7 +50,7 @@ def main():
     logger.info("Waiting for messages. To exit press CTRL+C")
 
     # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    channel.basic_consume(on_message, queue=extractorName, no_ack=False)
 
     try:
         channel.start_consuming()
@@ -71,7 +73,8 @@ def findbiggesteye(eyes):
 
 
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger, receiver, sslVerify
+    global logger, extractorName, sslVerify
+    global face_cascade_path, big_eyepair_cascade_path, small_eyepair_cascade_path, left_eye_cascade_path, right_eye_cascade_path
     logger.debug("INSIDE: create_image_section")
 
     facefile=None
@@ -79,18 +82,11 @@ def create_image_section(inputfile, ext, host, fileid, key):
 
     try:
         #extract face from images using opencv face detector
-        face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
-        big_eyepair_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_big.xml')
-        small_eyepair_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_small.xml')
-        left_eye_cascade=cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_lefteye_2splits.xml')
-        right_eye_cascade=cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml')
-
-
-        #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
-        #big_eyepair_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_big.xml')
-        #small_eyepair_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_small.xml')
-        #left_eye_cascade=cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_lefteye_2splits.xml')
-        #right_eye_cascade=cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml')
+        face_cascade = cv2.CascadeClassifier(face_cascade_path)
+        big_eyepair_cascade = cv2.CascadeClassifier(big_eyepair_cascade_path)
+        small_eyepair_cascade = cv2.CascadeClassifier(small_eyepair_cascade_path)
+        left_eye_cascade=cv2.CascadeClassifier(left_eye_cascade_path)
+        right_eye_cascade=cv2.CascadeClassifier(right_eye_cascade_path)
 
         img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
         #img = cv2.imread(inputfile)
@@ -188,7 +184,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     imgdata['section_id']=sectionid
                     imgdata['width']=str(w)
                     imgdata['height']=str(h)
-                    imgdata['extractor_id']=receiver
+                    imgdata['extractor_id']=extractorName
                 
                     headers={'Content-Type': 'application/json'}
                     url = host + 'api/previews/' + previewid + '/metadata?key=' + key
@@ -200,7 +196,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     url=host+'api/sections/'+ sectionid+'/tags?key=' + key
                     mdata={}
                     mdata["tags"]=["Human Eyes Automatically Detected"]
-                    mdata["extractor_id"]=receiver
+                    mdata["extractor_id"]=extractorName
                     logger.debug("tags: %s",json.dumps(mdata))
                     rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                     rt.raise_for_status()
@@ -210,7 +206,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                     url=host+'api/files/'+ fileid+'/tags?key=' + key
                     mdata={}
                     mdata["tags"]=["Human Eyes Automatically Detected"]
-                    mdata["extractor_id"]=receiver
+                    mdata["extractor_id"]=extractorName
                     logger.debug("tags: %s",json.dumps(mdata))
                     rtf = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                     rtf.raise_for_status()
@@ -230,7 +226,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger, receiver
+    global logger, extractorName
     statusreport = {}
     
     inputfile=None
@@ -248,7 +244,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = receiver
+        statusreport['extractor_id'] = extractorName
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')

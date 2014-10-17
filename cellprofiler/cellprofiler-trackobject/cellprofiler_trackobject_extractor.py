@@ -14,34 +14,35 @@ import zipfile
 import os.path
 import shutil
 import csv
-
-sslVerify=False
+from config import *
 
 def main():
-    global logger, receiver
-
-    # name of receiver
-    receiver='ncsa.cellprofiler.speckle'
+    global logger, extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
-    logger = logging.getLogger(receiver)
+    logger = logging.getLogger(extractorName)
     logger.setLevel(logging.DEBUG)
 
-    # connect to rabitmq
-    connection = pika.BlockingConnection()
+    # connect to rabbitmq using input username and password
+    if (rabbitmqUsername is None or rabbitmqPassword is None):
+        connection = pika.BlockingConnection()
+    else:
+        credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+        parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
+        connection = pika.BlockingConnection(parameters)
 
     # connect to channel
     channel = connection.channel()
 
     # declare the exchange
-    channel.exchange_declare(exchange='medici', exchange_type='topic', durable=True)
+    channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
 
     # declare the queue
-    channel.queue_declare(queue=receiver, durable=True)
+    channel.queue_declare(queue=extractorName, durable=True)
 
     # connect queue and exchange
-    channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.multi.files-zipped.#')
+    channel.queue_bind(queue=extractorName, exchange=exchange, routing_key=messageType)
 
     # setting prefetch count to 1 as workarround pika 0.9.14
     channel.basic_qos(prefetch_count=1)
@@ -50,7 +51,7 @@ def main():
     logger.info("Waiting for messages. To exit press CTRL+C")
 
     # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    channel.basic_consume(on_message, queue=extractorName, no_ack=False)
 
     try:
         channel.start_consuming()
@@ -62,17 +63,16 @@ def main():
 
 
 def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
-    global logger, receiver
+    global logger, extractorName
     global sslVerify
-
-    logger.debug("Running cellprofiler speckle dataset extractor")
+    logger.debug("Running cellprofiler ExampleTrackObjects pipeline")
     # (fd, thumbnailfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
        
         basefolder=os.path.dirname(os.path.realpath(__file__))
-        pipelinepath=os.path.join(basefolder, "ExampleSpeckles.cp")
-        datasetinputfolder=os.path.join(basefolder, datasetid+"_speckle_input")
-        datasetoutputfolder=os.path.join(basefolder, datasetid+"_speckle_output")
+        pipelinepath=os.path.join(basefolder, "ExampleTrackObjects.cp")
+        datasetinputfolder=os.path.join(basefolder, datasetid+"_track_input")
+        datasetoutputfolder=os.path.join(basefolder, datasetid+"_track_output")
         
         zfile = zipfile.ZipFile(inputfile)
         if not os.path.exists(datasetinputfolder):
@@ -81,45 +81,39 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             os.makedirs(datasetoutputfolder)
         
         
-        dirhoe = ""
-        dirh2ax = ""
-        counthoe = 0
-        counth2ax = 0
+        indir = ""
+        count=0
         for name in zfile.namelist():
             (dirname, filename) = os.path.split(name)
 
-            if (filename.find("hoe")!=-1 or filename.find("h2ax")!=-1) and not filename.startswith("."):
+            if filename.find("GFPHistone")!=-1 and not filename.startswith("."):
                 dirname=os.path.join(datasetinputfolder, dirname)
-                if filename.find("hoe")!=-1:
-                    dirhoe = dirname
-                    counthoe +=1
-                if filename.find("h2ax")!=-1 :
-                    dirh2ax = dirname
-                    counth2ax +=1
                 print "Decompressing " + filename + " on " + dirname
                 zfile.extract(name, datasetinputfolder)
+                indir = dirname
+                count+=1
                 
-        if counthoe==1 and counth2ax==1 and dirhoe == dirh2ax:
-
-            subprocess.check_output(['CellProfiler.exe', '-c', '-r', '-i',  dirhoe, '-o', datasetoutputfolder, '-p', pipelinepath], stderr=subprocess.STDOUT)
+        if count>0:
+            subprocess.check_output(['CellProfiler.exe', '-c', '-r', '-i',  indir, '-o', datasetoutputfolder, '-p', pipelinepath], stderr=subprocess.STDOUT)
     
             logger.debug("[%s] cellprofiler pipeline processed", datasetid)
-            for f in os.listdir(datasetoutputfolder):
-                print os.path.join(datasetoutputfolder,f)
-                if f.endswith(".csv") or f.endswith(".tiff"):
+            datasetoutputfolder2 = os.path.join(datasetoutputfolder,  datasetid+"_track_input")
+            for f in sorted(os.listdir(datasetoutputfolder2)):
+                print os.path.join(datasetoutputfolder2,f)
+                if f.lower().endswith(".csv") or f.lower().endswith(".png"):
                     # upload the file to the dataset
                     url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
-                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')}, verify=sslVerify)
+                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder2,f), 'rb')}, verify=sslVerify)
                     r.raise_for_status()
                     uploadedfileid = r.json()['id']
                     logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
-
+     
 
             mdata = {}
-            mdata["extractor_id"]=receiver
-            for f in os.listdir(datasetoutputfolder):
+            mdata["extractor_id"]=extractorName
+            for f in os.listdir(datasetoutputfolder2):
                 filemeta={}
-                filepath = os.path.join(datasetoutputfolder,f)
+                filepath = os.path.join(datasetoutputfolder2,f)
                 if f.endswith(".csv"):
                     metarows=[]
                     with open(filepath, 'rb') as csvfile:
@@ -137,7 +131,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             url=host+'api/files/'+ fileid +'/metadata?key=' + key
             rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
             rt.raise_for_status()
-     
+
 
             logger.debug("[%s] cellprofiler pipeline results posted", datasetid)
 
@@ -160,7 +154,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                 
         
 def on_message(channel, method, header, body):
-    global logger, receiver
+    global logger, extractorName
     global sslVerify
     
     statusreport = {}
@@ -182,7 +176,7 @@ def on_message(channel, method, header, body):
 
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = receiver
+        statusreport['extractor_id'] = extractorName
         statusreport['status'] = 'Downloading input file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
@@ -214,7 +208,6 @@ def on_message(channel, method, header, body):
 
         extract_cellprofiler(inputfile, host, fileid, datasetid, key)
         
-
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", datasetid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -251,7 +244,6 @@ def on_message(channel, method, header, body):
         # Ack
         channel.basic_ack(method.delivery_tag)
         logger.debug("[%s] finished processing", datasetid)
-
 
 
 if __name__ == "__main__":

@@ -13,9 +13,12 @@ import time
 import zipfile
 import os.path
 import shutil
+import csv
+
+sslVerify=False
 
 def main():
-    global logger
+    global logger, receiver
 
     # name of receiver
     receiver='ncsa.cellprofiler.fly'
@@ -27,8 +30,6 @@ def main():
 
     # connect to rabitmq
     connection = pika.BlockingConnection()
-
-
 
     # connect to channel
     channel = connection.channel()
@@ -42,11 +43,15 @@ def main():
     # connect queue and exchange
     channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.multi.files-zipped.#')
 
-    # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    # setting prefetch count to 1 as workarround pika 0.9.14
+    channel.basic_qos(prefetch_count=1)
 
     # start listening
     logger.info("Waiting for messages. To exit press CTRL+C")
+
+    # create listener
+    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
@@ -57,7 +62,9 @@ def main():
 
 
 def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
-    global logger
+    global logger, receiver
+    global sslVerify
+    
     logger.debug("Running cellprofiler dataset fly images extractor")
     # (fd, thumbnailfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
@@ -111,11 +118,35 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                 if f.lower().endswith(".csv") or f.lower().endswith(".tif") or f.lower().endswith(".tiff"):
                     # upload the file to the dataset
                     url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
-                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')})
+                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')}, verify=sslVerify)
                     r.raise_for_status()
                     uploadedfileid = r.json()['id']
                     logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
      
+
+            mdata = {}
+            mdata["extractor_id"]=receiver
+            for f in os.listdir(datasetoutputfolder):
+                filemeta={}
+                filepath = os.path.join(datasetoutputfolder,f)
+                if f.endswith(".csv"):
+                    metarows=[]
+                    with open(filepath, 'rb') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        header = reader.next()
+                        for row in reader:
+                            metarow={}
+                            for cell in range(0, len(row)-1):
+                                metarow[header[cell]]=row[cell]
+                            metarows.append(metarow)
+                    metafield=f[f.rindex('_')+1:f.rindex('.')]
+                    mdata[metafield]=metarows
+            
+            headers={'Content-Type': 'application/json'}
+            url=host+'api/files/'+ fileid +'/metadata?key=' + key
+            rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
+            rt.raise_for_status()
+
 
             logger.debug("[%s] cellprofiler pipeline results posted", datasetid)
 
@@ -138,16 +169,16 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                 
         
 def on_message(channel, method, header, body):
-    global logger
+    global logger, receiver
+    global sslVerify
+
     statusreport = {}
 
     inputfile=None
     try:
         # parse body back from json
         jbody=json.loads(body)
-
-        # key=jbody['key']
-        key='r1ek3rs'
+        key=jbody['secretKey']
         host=jbody['host']
         logger.debug("host[%s]=",host)
         fileid=jbody['id']
@@ -160,7 +191,7 @@ def on_message(channel, method, header, body):
 
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cellprofiler.fly'
+        statusreport['extractor_id'] = receiver
         statusreport['status'] = 'Downloading input file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
@@ -173,7 +204,7 @@ def on_message(channel, method, header, body):
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
         (fd, inputfile)=tempfile.mkstemp()
         with os.fdopen(fd, "w") as f:
@@ -193,9 +224,7 @@ def on_message(channel, method, header, body):
         extract_cellprofiler(inputfile, host, fileid, datasetid, key)
         
 
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", datasetid)
+        
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", datasetid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -228,6 +257,10 @@ def on_message(channel, method, header, body):
                             body=json.dumps(statusreport))
         if inputfile is not None and os.path.isfile(inputfile):
             os.remove(inputfile)
+
+        # Ack
+        channel.basic_ack(method.delivery_tag)
+        logger.debug("[%s] finished processing", datasetid)
 
 
 if __name__ == "__main__":

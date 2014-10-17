@@ -11,11 +11,14 @@ import os
 import itertools
 import time
 from subprocess import Popen, PIPE
+from config import *
+
 
 def extract_caltech101_category(inputfile, host, fileid, key):
 	global logger
-	global receiver
+	global extractorName
 	global matlab_process
+	global sslVerify
 
 	logger.debug("starting classification process")
 	
@@ -41,12 +44,12 @@ def extract_caltech101_category(inputfile, host, fileid, key):
 
 		url=host+'api/files/'+ fileid +'/metadata?key=' + key
 		mdata={}
-		mdata["extractor_id"]=receiver
+		mdata["extractor_id"]=extractorName
 		mdata["basic_caltech101_category"]=[category]
 		mdata["basic_caltech101_score"]=[score]
 
 		logger.debug("metadata: %s",json.dumps(mdata))
-		rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+		rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
 		rt.raise_for_status()
 		logger.debug("[%s] finished running classifier", fileid)
 
@@ -58,8 +61,8 @@ def extract_caltech101_category(inputfile, host, fileid, key):
 
 def main():
 	global logger
-	global receiver
 	global matlab_process
+	global extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
 	install_folder=os.path.dirname(os.path.realpath(__file__))
 	# open matlab, go to required directory, and keep it running
@@ -88,34 +91,40 @@ def main():
 	matlab_process.stdin.flush()
 	time.sleep(1) 
 
-	# name of receiver
-	receiver='ncsa.image.caltech101'
-
 	# configure the logging system
 	logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
-	logger = logging.getLogger(receiver)
+	logger = logging.getLogger(extractorName)
 	logger.setLevel(logging.DEBUG)
 
-	# connect to rabitmq
-	connection = pika.BlockingConnection()
+	# connect to rabbitmq using input username and password
+	if (rabbitmqUsername is None or rabbitmqPassword is None):
+		connection = pika.BlockingConnection()
+	else:
+		credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+		parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
+		connection = pika.BlockingConnection(parameters)
 
 	# connect to channel
 	channel = connection.channel()
 
 	# declare the exchange
-	channel.exchange_declare(exchange='medici', exchange_type='topic', durable=True)
+	channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
 
 	# declare the queue
-	channel.queue_declare(queue=receiver, durable=True)
+	channel.queue_declare(queue=extractorName, durable=True)
 
 	# connect queue and exchange
-	channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.image.#')
+	channel.queue_bind(queue=extractorName, exchange=exchange, routing_key=messageType)
 
-	# create listener
-	channel.basic_consume(on_message, queue=receiver, no_ack=False)
+	# setting prefetch count to 1 as workarround pika 0.9.14
+	channel.basic_qos(prefetch_count=1)
 
 	# start listening
 	logger.info("Waiting for messages. To exit press CTRL+C")
+
+	# create listener
+	channel.basic_consume(on_message, queue=extractorName, no_ack=False)
+
 	try:
 		channel.start_consuming()
 	except KeyboardInterrupt:
@@ -133,16 +142,15 @@ def main():
 
 def on_message(channel, method, header, body):
 	global logger
-	global receiver
+	global extractorName
+	global sslVerify
 	statusreport = {}
 
 	inputfile=None
 	try:
 		# parse body back from json
 		jbody=json.loads(body)
-
-		# key=jbody['key']
-		key='r1ek3rs'
+		key=jbody['secretKey']
 		host=jbody['host']
 		#logger.debug("host[%s]=",host)
 		fileid=jbody['id']
@@ -153,7 +161,7 @@ def on_message(channel, method, header, body):
 		logger.debug("[%s] started processing", fileid)
 		# for status reports
 		statusreport['file_id'] = fileid
-		statusreport['extractor_id'] = receiver
+		statusreport['extractor_id'] = extractorName
 		statusreport['status'] = 'Downloading image file.'
 		statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
 		statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
@@ -165,7 +173,7 @@ def on_message(channel, method, header, body):
 
 		# fetch data
 		url=host + 'api/files/' + fileid + '?key=' + key
-		r=requests.get(url, stream=True)
+		r=requests.get(url, stream=True, verify=sslVerify)
 		r.raise_for_status()
 		(fd, inputfile)=tempfile.mkstemp()
 		with os.fdopen(fd, "w") as f:
@@ -185,10 +193,6 @@ def on_message(channel, method, header, body):
 
 		extract_caltech101_category(inputfile, host, fileid, key)
 		
-
-		# Ack
-		channel.basic_ack(method.delivery_tag)
-		logger.debug("[%s] finished processing", fileid)
 	except subprocess.CalledProcessError as e:
 		logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
 		statusreport['status'] = 'Error processing.'
@@ -220,6 +224,10 @@ def on_message(channel, method, header, body):
 							body=json.dumps(statusreport))
 		if inputfile is not None:
 			os.remove(inputfile)
+
+		# Ack
+		channel.basic_ack(method.delivery_tag)
+		logger.debug("[%s] finished processing", fileid)
 
 
 if __name__ == "__main__":

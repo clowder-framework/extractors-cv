@@ -13,6 +13,8 @@ import numpy as np
 import cv2
 import time
 
+sslVerify=False
+
 def main():
     global logger
 
@@ -26,8 +28,8 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     # connect to rabitmq
-    
     connection = pika.BlockingConnection()
+
     # connect to channel
     channel = connection.channel()
 
@@ -40,11 +42,15 @@ def main():
     # connect queue and exchange
     channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.image.#')
 
-    # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    # setting prefetch count to 1 as workarround pika 0.9.14
+    channel.basic_qos(prefetch_count=1)
 
     # start listening
     logger.info("Waiting for messages. To exit press CTRL+C")
+
+    # create listener
+    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+
     try:
         channel.start_consuming()
     except KeyboardInterrupt:
@@ -54,9 +60,11 @@ def main():
     connection.close()
  
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger
+    global logger, receiver, sslVerify
     logger.debug("INSIDE: create_image_section")
-    (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
+    
+    sectionfile=None
+    
     try:
         #extract face from images using opencv face detector
         #face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml')
@@ -77,9 +85,12 @@ def create_image_section(inputfile, ext, host, fileid, key):
             #for each face detected, create a section corresponding to it and upload section information to server
             #create a preview for the section and upload the preview and its metadata
             for (x,y,w,h) in faces:
-                #roi_color = img[y:y+h, x:x+w]                
-                roi_color = img_color[y:y+h, x:x+w]                
-                      
+
+                #roi_color = img[y:y+h, x:x+w]
+                roi_color = img_color[y:y+h, x:x+w]
+                (fd, sectionfile)=tempfile.mkstemp(suffix='.' + ext)
+                os.close(fd)
+                   
                 cv2.imwrite(sectionfile, roi_color)                
 
                 # create section of an image, add to sections mongo collection                
@@ -92,32 +103,35 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 secdata["area"]={"x":int(x), "y":int(y),"w":int(w),"h":int(h)}                
                 #logger.debug("section json [%s]",(json.dumps(secdata)))                
                 headers={'Content-Type': 'application/json'}
-                r = requests.post(url,headers=headers, data=json.dumps(secdata))
-                r.raise_for_status()                
+               
+                r = requests.post(url,headers=headers, data=json.dumps(secdata), verify=sslVerify)
+                r.raise_for_status()
+                
                 sectionid=r.json()['id']
                 logger.debug("section id = [%s]",sectionid)
                 
                 
                 # add new line to to previews.files
                 url=host + 'api/previews?key=' + key
-                rc = requests.post(url, files={"File" : open(sectionfile, 'rb')})
-                rc.raise_for_status()
+                # upload preview image
+                with open(sectionfile, 'rb') as f:
+                    files={"File" : f}
+                    rc = requests.post(url, files=files, verify=sslVerify)
+                    rc.raise_for_status()
                 previewid = rc.json()['id']
                 logger.debug("preview id = [%s]",rc.json()['id'])
 
+                # associate uploaded image with section
                 imgdata={}
                 imgdata['section_id']=sectionid
                 imgdata['width']=str(w)
                 imgdata['height']=str(h)
                 imgdata['extractor_id']=receiver
+            
                 headers={'Content-Type': 'application/json'}
-                
-                #url=host+'api/previews/'+ previewid + '/metadata?key=' + key
-                #logger.debug("preview json [%s] ",json.dumps(imgdata))
-                #rp = requests.post(url, headers=headers, data=json.dumps(imgdata))
-                #rp.raise_for_status()
-                url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
-                rp = requests.post(url, headers=headers, data=json.dumps(imgdata));
+                url = host + 'api/previews/' + previewid + '/metadata?key=' + key
+                # url=host + 'api/files/' + fileid + '/previews/' + previewid + '?key=' + key
+                rp = requests.post(url, headers=headers, data=json.dumps(imgdata), verify=sslVerify);
                 rp.raise_for_status()
 
                 
@@ -127,7 +141,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rt = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
                 
                 # submit preview for indexing in Medici
@@ -146,12 +160,12 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 mdata["tags"]=["Human Face Automatically Detected","Person Automatically Detected"]
                 mdata["extractor_id"]=receiver
                 logger.debug("tags: %s",json.dumps(mdata))
-                rtf = requests.post(url, headers=headers, data=json.dumps(mdata))
+                rtf = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rtf.raise_for_status()
                 logger.debug("[%s] created section and previews of type %s", fileid, ext)
     finally:
         #os.remove(previewfile)
-        if os.path.isfile(sectionfile):     
+        if sectionfile is not None and os.path.isfile(sectionfile):     
             os.remove(sectionfile)  
 def get_image_data(imagefile):
     global logger
@@ -160,16 +174,14 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger
+    global logger, receiver, sslVerify
     statusreport = {}
 
     inputfile=None
     try:
         # parse body back from json
         jbody=json.loads(body)
-
-        # key=jbody['key']
-        key='r1ek3rs'
+        key=jbody['secretKey']
         host=jbody['host']
         #logger.debug("host[%s]=",host)
         fileid=jbody['id']
@@ -181,7 +193,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
         # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = 'ncsa.cv.face'
+        statusreport['extractor_id'] = receiver
 
         # fetch data
 
@@ -196,7 +208,7 @@ def on_message(channel, method, header, body):
 
         url=host + 'api/files/' + fileid + '?key=' + key
         print  url
-        r=requests.get(url, stream=True)
+        r=requests.get(url, stream=True, verify=sslVerify)
         r.raise_for_status()
 
         (fd, inputfile)=tempfile.mkstemp()
@@ -218,10 +230,6 @@ def on_message(channel, method, header, body):
         #create_image_preview(inputfile, 'jpg', '800x600>', host, fileid, key)
         create_image_section(inputfile, 'jpg', host, fileid, key)
                
-
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
@@ -251,13 +259,16 @@ def on_message(channel, method, header, body):
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-        if inputfile is not None:
+        if inputfile is not None and os.path.isfile(inputfile):
             try:
                 os.remove(inputfile)
-            except OSError:
-                pass
-            except UnboundLocalError:
-                pass    
+            except OSError as oserror:
+                logger.exception("[%s] error removing input file: \n %s", fileid, oserror)
+
+
+        # Ack
+        channel.basic_ack(method.delivery_tag)
+        logger.debug("[%s] finished processing", fileid)
 
 
 if __name__ == "__main__":

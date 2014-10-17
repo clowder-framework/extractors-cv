@@ -12,35 +12,36 @@ import itertools
 import numpy as np
 import cv2
 import time
-
-sslVerify=False
+from config import *
 
 def main():
     global logger
-    global receiver
-
-    # name of receiver
-    receiver='ncsa.cv.profile'
+    global extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
-    logger = logging.getLogger(receiver)
+    logger = logging.getLogger(extractorName)
     logger.setLevel(logging.DEBUG)
 
-    # connect to rabitmq
-    connection = pika.BlockingConnection()
+    # connect to rabbitmq using input username and password
+    if (rabbitmqUsername is None or rabbitmqPassword is None):
+        connection = pika.BlockingConnection()
+    else:
+        credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+        parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
+        connection = pika.BlockingConnection(parameters)
 
     # connect to channel
     channel = connection.channel()
 
     # declare the exchange
-    channel.exchange_declare(exchange='medici', exchange_type='topic', durable=True)
+    channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
 
     # declare the queue
-    channel.queue_declare(queue=receiver, durable=True)
+    channel.queue_declare(queue=extractorName, durable=True)
 
     # connect queue and exchange
-    channel.queue_bind(queue=receiver, exchange='medici', routing_key='*.file.image.#')
+    channel.queue_bind(queue=extractorName, exchange=exchange, routing_key=messageType)
 
     # setting prefetch count to 1 as workarround pika 0.9.14
     channel.basic_qos(prefetch_count=1)
@@ -49,7 +50,7 @@ def main():
     logger.info("Waiting for messages. To exit press CTRL+C")
 
     # create listener
-    channel.basic_consume(on_message, queue=receiver, no_ack=False)
+    channel.basic_consume(on_message, queue=extractorName, no_ack=False)
 
     try:
         channel.start_consuming()
@@ -62,8 +63,8 @@ def main():
 
 
 def create_image_section(inputfile, ext, host, fileid, key):
-    global logger, receiver
-    global sslVerify
+    global logger, extractorName
+    global sslVerify, profileface_cascade_path
 
     logger.debug("INSIDE: create_image_section")
 
@@ -71,9 +72,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
 
     try:
 
-        #profile_face_cascade = cv2.CascadeClassifier('/opt/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
-
-        profile_face_cascade = cv2.CascadeClassifier('/usr/local/share/OpenCV/haarcascades/haarcascade_profileface.xml')
+        profile_face_cascade = cv2.CascadeClassifier(profileface_cascade_path)
 
         img = cv2.imread(inputfile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
         
@@ -120,7 +119,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 imgdata['section_id']=sectionid
                 imgdata['width']=str(w)
                 imgdata['height']=str(h)
-                imgdata['extractor_id']=receiver
+                imgdata['extractor_id']=extractorName
             
                 headers={'Content-Type': 'application/json'}
                 url = host + 'api/previews/' + previewid + '/metadata?key=' + key
@@ -132,7 +131,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 url=host+'api/sections/'+ sectionid+'/tags?key=' + key
                 mdata={}
                 mdata["tags"]=["Human Profile Automatically Detected"]
-                mdata["extractor_id"]=receiver
+                mdata["extractor_id"]=extractorName
                 logger.debug("tags: %s",json.dumps(mdata))
                 rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rt.raise_for_status()
@@ -141,7 +140,7 @@ def create_image_section(inputfile, ext, host, fileid, key):
                 url=host+'api/files/'+ fileid+'/tags?key=' + key
                 mdata={}
                 mdata["tags"]=["Human Profile Automatically Detected"]
-                mdata["extractor_id"]=receiver
+                mdata["extractor_id"]=extractorName
                 logger.debug("tags: %s",json.dumps(mdata))
                 rtf = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
                 rtf.raise_for_status()
@@ -160,7 +159,7 @@ def get_image_data(imagefile):
     return text
 
 def on_message(channel, method, header, body):
-    global logger, receiver
+    global logger, extractorName
     global sslVerify
     
     statusreport = {}
@@ -180,7 +179,7 @@ def on_message(channel, method, header, body):
         logger.debug("[%s] started processing", fileid)
          # for status reports
         statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = receiver
+        statusreport['extractor_id'] = extractorName
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
