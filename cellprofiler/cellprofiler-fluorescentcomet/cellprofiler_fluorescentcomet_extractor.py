@@ -10,11 +10,14 @@ import subprocess
 import os
 import itertools
 import time
+import zipfile
+import os.path
+import shutil
+import csv
 from config import *
 
 def main():
-    global logger
-    global extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
+    global logger, extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
@@ -57,65 +60,102 @@ def main():
 
     # close connection
     connection.close()
- 
-
-def ocr(filename, tmpfilename):
-    text=""
-    tmpfile=None
-    try:
-        subprocess.check_call(["tesseract", filename, tmpfilename])
-        tmpfile="./"+tmpfilename+".txt"
-        with open(tmpfile, 'r') as f:
-            text = f.read()
-    finally:
-        if tmpfile is not None and os.path.isfile(tmpfile):
-            os.remove(tmpfile)
-        return clean_text(text)
-
-def clean_text(text):
-    t = ""
-    words=text.split()
-    for word in words:
-        w = clean_word(word) 
-        if w != "":
-            t+= w + " "
-    return t
-
-def clean_word(word):
-    cw = word.strip('(){}[].,')
-    if cw.isalnum() and len(cw)>=2:
-        return cw
-    else:
-        return ""
 
 
-def extract_OCR(inputfile, host, fileid, key):
-    global logger, sslVerify
-    global extractorName
-    logger.debug("INSIDE: extract_OCR")
+def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
+    global logger, extractorName
+    global sslVerify
     
+    logger.debug("Running cellprofiler fluorescent comet assay dataset extractor")
+    # (fd, thumbnailfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
-        ocrtext = ocr(inputfile, "tmpocr")
+       
+        basefolder=os.path.dirname(os.path.realpath(__file__))
+        pipelinepath=os.path.join(basefolder, "ExampleFluorescentCometAssay.cp")
+        datasetinputfolder=os.path.join(basefolder, datasetid+"_fcomet_input")
+        datasetoutputfolder=os.path.join(basefolder, datasetid+"_fcomet_output")
+        
+        zfile = zipfile.ZipFile(inputfile)
+        if not os.path.exists(datasetinputfolder):
+            os.makedirs(datasetinputfolder)
+        if not os.path.exists(datasetoutputfolder):
+            os.makedirs(datasetoutputfolder)
+        
+        indir=""
+        count = 0
+        for name in zfile.namelist():
+            (dirname, filename) = os.path.split(name)
 
-        headers={'Content-Type': 'application/json'}
+            if filename.endswith(".tif") and not filename.startswith("."):
+                dirname=os.path.join(datasetinputfolder, dirname)
+                print "Decompressing " + filename + " on " + dirname
+                zfile.extract(name, datasetinputfolder)
+                indir=dirname
+                count+=1
+                
+        if count==1:
+            subprocess.check_output(['CellProfiler.exe', '-c', '-r', '-i',  indir, '-o', datasetoutputfolder, '-p', pipelinepath], stderr=subprocess.STDOUT)
+    
+            logger.debug("[%s] cellprofiler pipeline processed", datasetid)
+            for f in os.listdir(datasetoutputfolder):
+                print os.path.join(datasetoutputfolder,f)
+                if f.endswith(".csv") or f.lower().endswith(".tif") or f.lower().endswith(".tiff"):
+                    # upload the file to the dataset
+                    url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
+                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')}, verify=sslVerify)
+                    r.raise_for_status()
+                    uploadedfileid = r.json()['id']
+                    logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
 
-        url=host+'api/files/'+ fileid +'/metadata?key=' + key
-        mdata={}
-        mdata["extractor_id"]=extractorName
-        mdata["ocr_simple"]=[ocrtext]
 
-        logger.debug("metadata: %s",json.dumps(mdata))
-        rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
-        rt.raise_for_status()
-        logger.debug("[%s] simple ocr performed successfully", fileid)
+            mdata = {}
+            mdata["extractor_id"]=extractorName
+            for f in os.listdir(datasetoutputfolder):
+                filemeta={}
+                filepath = os.path.join(datasetoutputfolder,f)
+                if f.endswith(".csv"):
+                    metarows=[]
+                    with open(filepath, 'rb') as csvfile:
+                        reader = csv.reader(csvfile, delimiter=',')
+                        header = reader.next()
+                        for row in reader:
+                            metarow={}
+                            for cell in range(0, len(row)-1):
+                                metarow[header[cell]]=row[cell]
+                            metarows.append(metarow)
+                    metafield=f[f.rindex('_')+1:f.rindex('.')]
+                    mdata[metafield]=metarows
+            
+            headers={'Content-Type': 'application/json'}
+            url=host+'api/files/'+ fileid +'/metadata?key=' + key
+            rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
+            rt.raise_for_status()
+     
+
+            logger.debug("[%s] cellprofiler pipeline results posted", datasetid)
+
+        else:
+            logger.debug("[%s] files did not match this extractor requirements (one single .tif file)", datasetid)
 
     finally:
-        logger.debug("[%s] done with simple ocr extractor", fileid)  
-        
+        if os.path.isdir(datasetinputfolder):
+            try:
+                shutil.rmtree(datasetinputfolder)
+            except:
+                pass
+        if os.path.isdir(datasetoutputfolder):
+            try:
+                shutil.rmtree(datasetoutputfolder)
+            except:
+                pass
 
+        logger.debug("[%s] done with cellprofiler pipeline", datasetid)
+                
+        
 def on_message(channel, method, header, body):
-    global logger, sslVerify
-    global extractorName
+    global logger, extractorName
+    global sslVerify
+
     statusreport = {}
 
     inputfile=None
@@ -124,24 +164,29 @@ def on_message(channel, method, header, body):
         jbody=json.loads(body)
         key=jbody['secretKey']
         host=jbody['host']
-        #logger.debug("host[%s]=",host)
+        logger.debug("host[%s]=",host)
         fileid=jbody['id']
+        datasetid=jbody['datasetId']
         if not (host.endswith('/')):
             host += '/'
 
         # print what we are doing
-        logger.debug("[%s] started processing", fileid)
+        logger.debug("[%s] started processing", datasetid)
+
         # for status reports
         statusreport['file_id'] = fileid
         statusreport['extractor_id'] = extractorName
-        statusreport['status'] = 'Downloading image file.'
+        statusreport['status'] = 'Downloading input file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+
+
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport)) 
+
 
         # fetch data
         url=host + 'api/files/' + fileid + '?key=' + key
@@ -152,7 +197,7 @@ def on_message(channel, method, header, body):
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
 
-        statusreport['status'] = 'OCRing image and associating text with file.'
+        statusreport['status'] = 'Detecting cellprofiler pipeline metadata and associating with file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
@@ -162,12 +207,11 @@ def on_message(channel, method, header, body):
                             body=json.dumps(statusreport))
 
 
-
-        extract_OCR(inputfile, host, fileid, key)
+        extract_cellprofiler(inputfile, host, fileid, datasetid, key)
         
 
     except subprocess.CalledProcessError as e:
-        logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
+        logger.exception("[%s] error processing [exit code=%d]\n%s", datasetid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
@@ -176,8 +220,9 @@ def on_message(channel, method, header, body):
                 properties=pika.BasicProperties(correlation_id = \
                                                 header.correlation_id),
                 body=json.dumps(statusreport)) 
+
     except:
-        logger.exception("[%s] error processing", fileid)
+        logger.exception("[%s] error processing", datasetid)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
@@ -195,12 +240,13 @@ def on_message(channel, method, header, body):
                             properties=pika.BasicProperties(correlation_id = \
                                                         header.correlation_id),
                             body=json.dumps(statusreport))
-        if inputfile is not None:
+        if inputfile is not None and os.path.isfile(inputfile):
             os.remove(inputfile)
-            
+        
         # Ack
         channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", fileid)
+        logger.debug("[%s] finished processing", datasetid)
+
 
 
 if __name__ == "__main__":

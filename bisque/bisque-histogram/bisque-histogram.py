@@ -10,11 +10,14 @@ import subprocess
 import os
 import itertools
 import time
+import xmltodict
+from xml.dom.minidom import parse, parseString
 from config import *
 
 def main():
     global logger
-    global extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
+    global rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
+    global extractorName, bisqueUser, bisquerabbitmqPassword, bisqueServer
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
@@ -59,63 +62,63 @@ def main():
     connection.close()
  
 
-def ocr(filename, tmpfilename):
-    text=""
-    tmpfile=None
-    try:
-        subprocess.check_call(["tesseract", filename, tmpfilename])
-        tmpfile="./"+tmpfilename+".txt"
-        with open(tmpfile, 'r') as f:
-            text = f.read()
-    finally:
-        if tmpfile is not None and os.path.isfile(tmpfile):
-            os.remove(tmpfile)
-        return clean_text(text)
+def call_bisque(filename):
+    global bisqueUser
+    global bisquerabbitmqPassword
+    global bisqueServer
+    
+    histdict ={}
+    posturl = bisqueServer+'/import/transfer'
+    files = {'file': open(filename, 'rb')}
+    r = requests.post(posturl, files=files , auth=(bisqueUser, bisquerabbitmqPassword))
 
-def clean_text(text):
-    t = ""
-    words=text.split()
-    for word in words:
-        w = clean_word(word) 
-        if w != "":
-            t+= w + " "
-    return t
-
-def clean_word(word):
-    cw = word.strip('(){}[].,')
-    if cw.isalnum() and len(cw)>=2:
-        return cw
-    else:
-        return ""
+    if(r.status_code==200):
+        xmldoc = parseString(r.text)
+        imagelist =  xmldoc.getElementsByTagName('image')
+        imageuri = imagelist[0].attributes['uri'].value
+        imageuniq = imagelist[0].attributes['resource_uniq'].value
 
 
-def extract_OCR(inputfile, host, fileid, key):
-    global logger, sslVerify
-    global extractorName
-    logger.debug("INSIDE: extract_OCR")
+        r = requests.get(bisqueServer+'/image_service/'+imageuniq+'?histogram', auth=(bisqueUser, bisquerabbitmqPassword))
+
+        histdict = xmltodict.parse(r.text) #dict containing xml fields
+        # histjson = json.dumps(histdict) #json object
+
+        r = requests.delete(imageuri, auth=(bisqueUser, bisquerabbitmqPassword))
+
+    return histdict['resource']['histogram']#histdict
+    
+    
+
+
+def extract_bisque(inputfile, host, fileid, key):
+    global logger
+    global sslVerify
+    logger.debug("INSIDE: extract_Bisque")
     
     try:
-        ocrtext = ocr(inputfile, "tmpocr")
+        bisquedict = call_bisque(inputfile)
 
         headers={'Content-Type': 'application/json'}
 
         url=host+'api/files/'+ fileid +'/metadata?key=' + key
         mdata={}
-        mdata["extractor_id"]=extractorName
-        mdata["ocr_simple"]=[ocrtext]
+        mdata["bisque_histogram"]=[bisquedict]
 
-        logger.debug("metadata: %s",json.dumps(mdata))
+        # logger.debug("metadata: %s",json.dumps(mdata))
         rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
         rt.raise_for_status()
-        logger.debug("[%s] simple ocr performed successfully", fileid)
+        logger.debug("[%s] Bisque histogram extractor performed successfully", fileid)
 
     finally:
-        logger.debug("[%s] done with simple ocr extractor", fileid)  
+        logger.debug("[%s] done with Bisque histogram extractor", fileid)  
         
 
 def on_message(channel, method, header, body):
-    global logger, sslVerify
+    global logger
     global extractorName
+    global sslVerify
+    
     statusreport = {}
 
     inputfile=None
@@ -136,7 +139,7 @@ def on_message(channel, method, header, body):
         statusreport['extractor_id'] = extractorName
         statusreport['status'] = 'Downloading image file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -152,9 +155,9 @@ def on_message(channel, method, header, body):
             for chunk in r.iter_content(chunk_size=10*1024):
                 f.write(chunk)
 
-        statusreport['status'] = 'OCRing image and associating text with file.'
+        statusreport['status'] = 'calling Bisque and associating results with file.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -163,14 +166,17 @@ def on_message(channel, method, header, body):
 
 
 
-        extract_OCR(inputfile, host, fileid, key)
+        extract_bisque(inputfile, host, fileid, key)
         
 
+        # Ack
+        channel.basic_ack(method.delivery_tag)
+        logger.debug("[%s] finished processing", fileid)
     except subprocess.CalledProcessError as e:
         logger.exception("[%s] error processing [exit code=%d]\n%s", fileid, e.returncode, e.output)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -180,7 +186,7 @@ def on_message(channel, method, header, body):
         logger.exception("[%s] error processing", fileid)
         statusreport['status'] = 'Error processing.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S') 
         channel.basic_publish(exchange='',
                 routing_key=header.reply_to,
                 properties=pika.BasicProperties(correlation_id = \
@@ -189,7 +195,7 @@ def on_message(channel, method, header, body):
     finally:
         statusreport['status'] = 'DONE.'
         statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
+        statusreport['end'] = time.strftime('%Y-%m-%dT%H:%M:%S')
         channel.basic_publish(exchange='',
                             routing_key=header.reply_to,
                             properties=pika.BasicProperties(correlation_id = \
@@ -197,10 +203,6 @@ def on_message(channel, method, header, body):
                             body=json.dumps(statusreport))
         if inputfile is not None:
             os.remove(inputfile)
-            
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", fileid)
 
 
 if __name__ == "__main__":
