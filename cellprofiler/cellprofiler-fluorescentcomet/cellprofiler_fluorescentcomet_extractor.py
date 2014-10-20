@@ -17,7 +17,7 @@ import csv
 from config import *
 
 def main():
-    global logger, extractorName, rabbitmqUsername, rabbitmqPassword, messageType, exchange, rabbitmqHost
+    global logger, extractorName, rabbitmqUsername, rabbitmqURL, rabbitmqPort, rabbitmqPassword, messageType, exchange, rabbitmqHost
 
     # configure the logging system
     logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
@@ -25,12 +25,15 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     # connect to rabbitmq using input username and password
-    if (rabbitmqUsername is None or rabbitmqPassword is None):
-        connection = pika.BlockingConnection()
+    if (rabbitmqURL is None):
+        if (rabbitmqUsername is not None and rabbitmqPassword is not None):
+            credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+        else:
+            credentials = None
+        parameters = pika.ConnectionParameters(host=rabbitmqHost, port=rabbitmqPort, credentials=credentials)
     else:
-        credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
-        parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
-        connection = pika.BlockingConnection(parameters)
+        parameters = pika.URLParameters(rabbitmqURL)
+    connection = pika.BlockingConnection(parameters)
 
     # connect to channel
     channel = connection.channel()

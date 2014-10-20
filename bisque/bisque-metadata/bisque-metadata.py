@@ -16,7 +16,7 @@ from config import *
 
 def main():
     global logger
-    global rabbitmqUsername, password, messageType, exchange, rabbitmqHost
+    global rabbitmqUsername, rabbitmqURL, rabbitmqPort, rabbitmqPassword, messageType, exchange, rabbitmqHost
     global extractorName, bisqueUser, bisquePassword, bisqueServer
     
 
@@ -26,12 +26,15 @@ def main():
     logger.setLevel(logging.DEBUG)
 
     # connect to rabbitmq using input rabbitmqUsername and password
-    if (rabbitmqUsername is None or password is None):
-        connection = pika.BlockingConnection()
+    if (rabbitmqURL is None):
+        if (rabbitmqUsername is not None and rabbitmqPassword is not None):
+            credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
+        else:
+            credentials = None
+        parameters = pika.ConnectionParameters(host=rabbitmqHost, port=rabbitmqPort, credentials=credentials)
     else:
-        credentials = pika.PlainCredentials(rabbitmqUsername, password)
-        parameters = pika.ConnectionParameters(host=rabbitmqHost, credentials=credentials)
-        connection = pika.BlockingConnection(parameters)
+        parameters = pika.URLParameters(rabbitmqURL)
+    connection = pika.BlockingConnection(parameters)
 
 
     # connect to channel

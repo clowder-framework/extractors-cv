@@ -7,7 +7,7 @@ In order to use these extractors, you must have access to an instance of Bisque.
 
 In order for the extractor to work, your system needs to have installed **Python** and the following Python packages/modules: [**requests**](https://pypi.python.org/pypi/requests/2.3.0), [**pika**](https://pypi.python.org/pypi/pika).
 
-**Important**: Your username/passwords must be entered in the Python files (bisque-histogram.py and bisque-metadata.py). To do so, search for and change bisqueuser='' and bisquepassword='' to your info, for example bisqueuser='myusername' and bisquepassword='mypassword'.
+**Important**: Your username/passwords must be entered in the Python config files (config.py). To do so, search for and change bisqueUser='' and bisquePassword='' to your info, for example bisqueUser='myusername' and bisquePassword='mypassword'.
 
 This extractor was tested on a 64-bit Mac OS using Python 2.7.5.
 
