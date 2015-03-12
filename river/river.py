@@ -399,26 +399,46 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
     print "horizontal slopes: ", mh_min, mh_max
 
     # top left
-    x = ((mv_min*x1v_min) - (mh_min*x1h_min) + (y1h_min - y1v_min))/ (mv_min -mh_min)
-    y = mv_min *(x-x1v_min) + y1v_min
+    if mv_min==0:
+        x = x1v_min
+        y = mh_min *(x-x1h_min) + y1h_min
+
+    else:
+        x = ((mv_min*x1v_min) - (mh_min*x1h_min) + (y1h_min - y1v_min))/ (mv_min -mh_min)
+        y = mv_min *(x-x1v_min) + y1v_min
 
     p1 = [int(x), int(y)]
 
     # top right 
-    x = ((mv_max*x1v_max) - (mh_min*x1h_min) + (y1h_min - y1v_max))/ (mv_max -mh_min)
-    y = mv_max *(x-x1v_max) + y1v_max
+    if mv_max==0:
+        x = x1v_max
+        y = mh_min *(x-x1h_min) + y1h_min
+
+    else:
+        x = ((mv_max*x1v_max) - (mh_min*x1h_min) + (y1h_min - y1v_max))/ (mv_max -mh_min)
+        y = mv_max *(x-x1v_max) + y1v_max
 
     p2 = [int(x), int(y)]
 
     # bottom left
-    x = ((mv_min*x1v_min) - (mh_max*x1h_max) + (y1h_max - y1v_min))/ (mv_min -mh_max)
-    y = mv_min *(x-x1v_min) + y1v_min
+    if mv_min==0:
+        x = x1v_min
+        y = mh_max *(x-x1h_max) + y1h_max
+
+    else:
+        x = ((mv_min*x1v_min) - (mh_max*x1h_max) + (y1h_max - y1v_min))/ (mv_min -mh_max)
+        y = mv_min *(x-x1v_min) + y1v_min
 
     p3 = [int(x), int(y)]
 
     # bottom right
-    x = ((mv_max*x1v_max) - (mh_max*x1h_max) + (y1h_max - y1v_max))/ (mv_max -mh_max)
-    y = mv_max *(x-x1v_max) + y1v_max
+    if mv_max==0:
+        x = x1v_max
+        y = mh_max *(x-x1h_max) + y1h_max
+
+    else:
+        x = ((mv_max*x1v_max) - (mh_max*x1h_max) + (y1h_max - y1v_max))/ (mv_max -mh_max)
+        y = mv_max *(x-x1v_max) + y1v_max
 
     p4 = [int(x), int(y)]
 
@@ -552,9 +572,9 @@ def get_period(lines):
 def main():
 
     filepath="./TerEx_demo_1820s_str/39-44.tif"
-    # filepath="./TerEx_demo_1820s_str/39-45.tif"
-    # filepath="./TerEx_demo_1820s_str/39-71.tif"
-    # filepath="./TerEx_demo_1820s_str/39-72.tif"
+    filepath="./TerEx_demo_1820s_str/39-45.tif"
+    filepath="./TerEx_demo_1820s_str/39-71.tif"
+    filepath="./TerEx_demo_1820s_str/39-72.tif"
 
     process_file(filepath)
     
