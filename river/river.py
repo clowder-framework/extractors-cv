@@ -62,7 +62,6 @@ def process_file(filepath):
     save_img("original-rotated.jpg", img)                
 
 
-
     # get rid of everything outside the grid
     [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, imgcolor)
 
@@ -74,22 +73,11 @@ def process_file(filepath):
     
 
     # clean up completely disconnected small areas
-    kernel = np.ones((3,3),np.uint8)
-    dilation = cv2.dilate(bw,kernel,iterations = 2)
-    save_img("dilation.jpg", dilation)                
-
-    bw = clean_small_regions(dilation, bw)
-    save_img('bw-clean.jpg',bw)
-
-    dilation = cv2.dilate(bw,kernel,iterations = 1)
-    save_img('dilation-clean.jpg',dilation)
-
-    bw = clean_small_regions(dilation, bw)
-    save_img('bw-clean.jpg',bw)
+    bw=clean_small_regions(bw)
 
 
     #find grid lines
-    [mask_v, mask_h]=find_grid(bw, dilation, height, width, imgcolor2)
+    [mask_v, mask_h]=find_grid(bw, height, width, imgcolor2)
 
     save_img('mask-vertical.jpg',mask_v)
     save_img('mask-horizontal.jpg',mask_h)
@@ -190,21 +178,21 @@ def process_file(filepath):
     save_img('bw-dilation.jpg',dilation)
 
     # thin the dilated image
-    thin=thin_lines(dilation)
+    thin=thin_lines(dilation, w0, wf, h0, hf)
     save_img('bw-thin.jpg',thin)
 
 
-def thin_lines(dilation):
+def thin_lines(dilation, w0, wf, h0, hf):
 
     (thresh, thin) = cv2.threshold(dilation, 240, 255, cv2.THRESH_BINARY)
     save_img('bw-thin.jpg',thin)
 
-    print np.max(thin)
+    # print np.max(thin)
+        
+    # print w0, wf
+    # print h0, hf
 
     THINNING = True
-        
-    print w0, wf
-    print h0, hf
 
     while(THINNING):
         THINNING = False
@@ -354,10 +342,10 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
             if(y1 > hori_y_max) or (y2 > hori_y_max):
                 hori_max=[x1, y1, x2, y2]
                 hori_y_max = max(y1, y2)
-        else:
-            # print ang
-            if imgcolor is not None:
-                cv2.line(imgcolor,(x1,y1),(x2,y2),(0,0,255),2)
+        # else:
+        #     # print ang
+        #     if imgcolor is not None:
+        #         cv2.line(imgcolor,(x1,y1),(x2,y2),(0,0,255),2)
 
     if imgcolor is not None:      
         save_img('houghlines.jpg',imgcolor)
@@ -462,19 +450,43 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
 
     res = cv2.bitwise_and(img,mask)
     res2 = cv2.bitwise_or(res,cv2.bitwise_not(mask))
-    save_img('res.jpg',res2)
+    save_img('no-external-grid.jpg',res2)
 
     return [res2, p1, p2, p3, p4]
 
 
-def clean_small_regions(dilation, bw):
+def clean_small_regions(bw):
+
+    kernel = np.ones((3,3),np.uint8)
+
+    dilation = cv2.dilate(bw,kernel,iterations = 1)
+    save_img('dilation-clean.jpg',dilation)
+
+    bw = clean_by_area(dilation, bw)
+    save_img('bw-clean.jpg',bw)
+
+    dilation = cv2.dilate(bw,kernel,iterations = 2)
+    save_img("dilation-clean.jpg", dilation)                
+
+    bw = clean_by_area(dilation, bw)
+    save_img('bw-clean.jpg',bw)
+
+    dilation = cv2.dilate(bw,kernel,iterations = 1)
+    save_img('dilation-clean.jpg',dilation)
+
+    bw = clean_by_area(dilation, bw)
+    save_img('bw-clean.jpg',bw)
+
+    return bw
+
+def clean_by_area(dilation, bw):
 
     contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
 
     areas = [cv2.contourArea(cnt) for cnt in contours]
     # print areas
     areas_mean=np.mean(areas)
-    # print "mean areas:", areas_mean
+    print "mean areas:", areas_mean
     areas_median= np.median(areas)
     # print "median areas:", areas_median
 
@@ -484,13 +496,20 @@ def clean_small_regions(dilation, bw):
 
     return bw
 
-def find_grid(bw, dilation, height, width, imgcolor2=None):
+def find_grid(bw, height, width, imgcolor2=None):
+
     # compute hough lines
     min_line_length=int(0.6*width)+1;
     max_line_gap=int(0.1*width)+1;
     min_line_votes = int(0.4*width)+1;
     theta_resolution=1;
     rho=1;
+
+    #clean up non-line elements
+    kernel = np.ones((3,3),np.uint8)
+    dilation = cv2.dilate(bw,kernel,iterations = 3)
+    save_img('dilation-for-grid.jpg',dilation)
+
 
     lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
     mask_v = np.zeros(bw.shape,np.uint8)
@@ -532,9 +551,9 @@ def find_grid(bw, dilation, height, width, imgcolor2=None):
             if imgcolor2 is not None:
                 cv2.line(imgcolor2,(x1,y1),(x2,y2),(0,255,0),2)
 
-        else:
-            if imgcolor2 is not None:
-                cv2.line(imgcolor2,(x1,y1),(x2,y2),(0,0,255),2)
+        # else:
+        #     if imgcolor2 is not None:
+        #         cv2.line(imgcolor2,(x1,y1),(x2,y2),(0,0,255),2)
 
 
     if imgcolor2 is not None:
@@ -572,9 +591,9 @@ def get_period(lines):
 def main():
 
     filepath="./TerEx_demo_1820s_str/39-44.tif"
-    filepath="./TerEx_demo_1820s_str/39-45.tif"
-    filepath="./TerEx_demo_1820s_str/39-71.tif"
-    filepath="./TerEx_demo_1820s_str/39-72.tif"
+    # filepath="./TerEx_demo_1820s_str/39-45.tif"
+    # filepath="./TerEx_demo_1820s_str/39-71.tif"
+    # filepath="./TerEx_demo_1820s_str/39-72.tif"
 
     process_file(filepath)
     
