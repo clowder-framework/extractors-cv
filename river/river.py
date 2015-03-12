@@ -50,15 +50,8 @@ def process_file(filepath):
     # fill margins with background pixels
     bw=remove_margins(bw, height, width)
          
-
-    # dilate ink to make it easier to find lines
-    kernel = np.ones((3,3),np.uint8)
-    dilation = cv2.dilate(bw,kernel,iterations = 1)
-
-    save_img("dilation.jpg", dilation)                
-
     # get rotation of the image
-    M=get_rotation(dilation, height, width)
+    M=get_rotation(bw, height, width)
 
     # unrotate images
     bw = cv2.warpAffine(bw,M,(width,height))
@@ -68,20 +61,16 @@ def process_file(filepath):
 
     save_img("original-rotated.jpg", img)                
 
-    # dilate ink to make it easier to find lines
-    kernel = np.ones((3,3),np.uint8)
-    dilation = cv2.dilate(bw,kernel,iterations = 3)
 
-    save_img("dilation-rotated.jpg", dilation)                
 
     # get rid of everything outside the grid
-    [res2, p1, p2, p3, p4]=clean_outside_grid(img, bw, dilation, height, width, imgcolor)
+    [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, imgcolor)
 
 
     # threshold the image to start working on the inside part of the grid
-    (thresh, bw) = cv2.threshold(res2, 240, 255, cv2.THRESH_BINARY_INV)
+    (thresh, bw) = cv2.threshold(clean, 240, 255, cv2.THRESH_BINARY_INV)
 
-    save_img('res-bw.jpg',bw)
+    save_img('bw-clean-external.jpg',bw)
     
 
     # clean up completely disconnected small areas
@@ -239,7 +228,14 @@ def thin_lines(dilation):
 
     return thin
 
-def get_rotation(dilation, height, width):
+def get_rotation(bw, height, width):
+
+    # dilate ink to make it easier to find lines
+    kernel = np.ones((3,3),np.uint8)
+    dilation = cv2.dilate(bw,kernel,iterations = 1)
+
+    save_img("dilation-get-rotation.jpg", dilation)                
+
     # compute hough lines
     min_line_length=int(0.4*width)+1;
     max_line_gap=int(0.001*width)+1;
@@ -297,11 +293,34 @@ def remove_margins(bw, height, width):
     return bw
 
 
-def clean_outside_grid(img, bw, dilation, height, width, imgcolor=None):
+def clean_outside_grid(img, bw, height, width, imgcolor=None):
+
+    #clean up non-line elements
+    kernel = np.ones((3,3),np.uint8)
+    dilation = cv2.dilate(bw,kernel,iterations = 1)
+
+    save_img("dilation-clean-outside.jpg", dilation)                
+
+    # find contours
+    contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
+
+    for cnt in contours:
+        if cv2.contourArea(cnt)<500:
+            cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+
+    save_img('bw-before-clean-outside.jpg',bw)
+
+
+    # dilate ink to make it easier to find lines
+    kernel = np.ones((3,3),np.uint8)
+    dilation = cv2.dilate(bw,kernel,iterations = 3)
+
+    save_img("dilation-rotated.jpg", dilation)                
+
     # compute hough lines
-    min_line_length=int(0.4*width)+1;
+    min_line_length=int(0.8*width)+1;
     max_line_gap=int(0.001*width)+1;
-    min_line_votes = int(0.4*width)+1;
+    min_line_votes = int(0.6*width)+1;
     theta_resolution=1;
     rho=1;
 
@@ -533,6 +552,9 @@ def get_period(lines):
 def main():
 
     filepath="./TerEx_demo_1820s_str/39-44.tif"
+    # filepath="./TerEx_demo_1820s_str/39-45.tif"
+    # filepath="./TerEx_demo_1820s_str/39-71.tif"
+    # filepath="./TerEx_demo_1820s_str/39-72.tif"
 
     process_file(filepath)
     
