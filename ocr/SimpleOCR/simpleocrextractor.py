@@ -10,6 +10,7 @@ import subprocess
 import os
 import itertools
 import time
+import uuid
 from config import *
 
 def main():
@@ -99,7 +100,7 @@ def extract_OCR(inputfile, host, fileid, key):
     logger.debug("INSIDE: extract_OCR")
     
     try:
-        ocrtext = ocr(inputfile, "tmpocr")
+        ocrtext = ocr(inputfile, str(uuid.uuid4()))
 
         headers={'Content-Type': 'application/json'}
 
