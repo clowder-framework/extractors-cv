@@ -9,6 +9,10 @@ In order for the extractor to work, your system needs to have installed **Python
 
 **Important**: Your username/passwords must be entered in the Python config files (config.py). To do so, search for and change bisqueUser='' and bisquePassword='' to your info, for example bisqueUser='myusername' and bisquePassword='mypassword'.
 
+To use this extractor you will need pymedici installed. You can either install it, or you can create a link to the pymedici repository. Assuming that the pymedici repository is cloned in the same folder as this repository you can execute the following code `ln -s $(cd "../../pyMedici/pymedici" && pwd -P) pymedici`.
+
+In config.py you will need to set the URL to point to rabbitmq (https://www.rabbitmq.com/uri-spec.html). For example to connect to rabbitmq running on the localhost with default parameters you can use the following URL: amqp://guest:guest@localhost:5672/%2f
+
 This extractor was tested on a 64-bit Mac OS using Python 2.7.5.
 
 ## Overview

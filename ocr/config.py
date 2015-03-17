@@ -11,23 +11,13 @@
 # =============================================================================
 
 # name to show in rabbitmq queue list
-extractorName = "ncsa.cv.caltech101"
+extractorName = "ncsa.image.ocr"
 
 # URL to be used for connecting to rabbitmq
 rabbitmqURL = None
 
-# address of host where rabbitmq is running
-rabbitmqHost = "localhost"
-
-#port to be used for connecting to rabbitmq
-rabbitmqPort = 5672
-
-# username and password to connect to rabbitmq
-rabbitmqUsername = None
-rabbitmqPassword = None
-
 # name of rabbitmq exchange
-exchange = "medici"
+rabbitmqExchange = "medici"
 
 # type of files to process
 messageType = "*.file.image.#"

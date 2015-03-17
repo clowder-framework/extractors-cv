@@ -2,6 +2,10 @@
 
 This extractor uses **Matlab** and **VLFeat** to classify images based on the Caltech 101 object categories. It was tested on a 64-bit Mac OS using Python 2.7.5, VLFeat 0.9.18, and Matlab R2013a.
 
+To use this extractor you will need pymedici installed. You can either install it, or you can create a link to the pymedici repository. Assuming that the pymedici repository is cloned in the same folder as this repository you can execute the following code `ln -s $(cd "../../pyMedici/pymedici" && pwd -P) pymedici`.
+
+In config.py you will need to set the URL to point to rabbitmq (https://www.rabbitmq.com/uri-spec.html). For example to connect to rabbitmq running on the localhost with default parameters you can use the following URL: amqp://guest:guest@localhost:5672/%2f
+
 Please, read the setup section carefully before proceeding.
 
 ## Overview

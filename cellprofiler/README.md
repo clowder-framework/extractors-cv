@@ -24,6 +24,10 @@ Each extractor needs a specific sample pipeline that can be found [here](https:/
 
 More information on the CellProfiler [Sample Pipelines](http://cellprofiler.org/examples.shtml) website.
 
+To use this extractor you will need pymedici installed. You can either install it, or you can create a link to the pymedici repository. Assuming that the pymedici repository is cloned in the same folder as this repository you can execute the following code `ln -s $(cd "../../pyMedici/pymedici" && pwd -P) pymedici`.
+
+In config.py you will need to set the URL to point to rabbitmq (https://www.rabbitmq.com/uri-spec.html). For example to connect to rabbitmq running on the localhost with default parameters you can use the following URL: amqp://guest:guest@localhost:5672/%2f
+
 ## Input
 All cellprofiler extractors receive one single ZIP file as input. The contents of the ZIP file depend on the extractor:
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import pika
 import sys
-import logging
 import json
 import traceback
 import requests
@@ -9,69 +8,35 @@ import tempfile
 import subprocess
 import os
 import itertools
+import logging
 import time
 import zipfile
 import os.path
 import shutil
 import csv
 from config import *
+import pymedici.extractors as extractors
 
 def main():
-    global logger, extractorName, rabbitmqUsername, rabbitmqURL, rabbitmqPort, rabbitmqPassword, messageType, exchange, rabbitmqHost
+    global extractorName, messageType, rabbitmqExchange, rabbitmqURL    
 
-    # configure the logging system
-    logging.basicConfig(format="%(asctime)-15s %(name)-10s %(levelname)-7s : %(message)s", level=logging.WARN)
-    logger = logging.getLogger(extractorName)
-    logger.setLevel(logging.DEBUG)
+    #set logging
+    logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
+    logging.getLogger('pymedici.extractors').setLevel(logging.INFO)
 
-    # connect to rabbitmq using input username and password
-    if (rabbitmqURL is None):
-        if (rabbitmqUsername is not None and rabbitmqPassword is not None):
-            credentials = pika.PlainCredentials(rabbitmqUsername, rabbitmqPassword)
-        else:
-            credentials = None
-        parameters = pika.ConnectionParameters(host=rabbitmqHost, port=rabbitmqPort, credentials=credentials)
-    else:
-        parameters = pika.URLParameters(rabbitmqURL)
-    connection = pika.BlockingConnection(parameters)
+    #connect to rabbitmq
+    extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
+        rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL)
 
 
-    # connect to channel
-    channel = connection.channel()
 
-    # declare the exchange
-    channel.exchange_declare(exchange=exchange, exchange_type='topic', durable=True)
-
-    # declare the queue
-    channel.queue_declare(queue=extractorName, durable=True)
-
-    # connect queue and exchange
-    channel.queue_bind(queue=extractorName, exchange=exchange, routing_key=messageType)
-
-    # setting prefetch count to 1 as workarround pika 0.9.14
-    channel.basic_qos(prefetch_count=1)
-
-    # start listening
-    logger.info("Waiting for messages. To exit press CTRL+C")
-
-    # create listener
-    channel.basic_consume(on_message, queue=extractorName, no_ack=False)
-
-    try:
-        channel.start_consuming()
-    except KeyboardInterrupt:
-        channel.stop_consuming()
-
-    # close connection
-    connection.close()
+def process_file(parameters):
+    global extractorName
+    
+    inputfile=parameters['inputfile']
+    datasetid=parameters['datasetId']
 
 
-def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
-    global logger, extractorName
-    global sslVerify
-
-    logger.debug("Running cellprofiler yeast colonies dataset extractor")
-    # (fd, thumbnailfile)=tempfile.mkstemp(suffix='.' + ext)
     try:
        
         basefolder=os.path.dirname(os.path.realpath(__file__))
@@ -101,26 +66,24 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                 if filename == "PlateTemplate.png":
                     dir2 = dirname
                     count2 +=1
-                print "Decompressing " + filename + " on " + dirname
                 zfile.extract(name, datasetinputfolder)
                 
         if count1==1 and count2==1 and dir1 == dir2:
             
             subprocess.check_output(['CellProfiler.exe', '-c', '-r', '-i',  dir1, '-o', datasetoutputfolder, '-p', pipelinepath], stderr=subprocess.STDOUT)
     
-            logger.debug("[%s] cellprofiler pipeline processed", datasetid)
+            generated_files = []
             for f in os.listdir(datasetoutputfolder):
-                print os.path.join(datasetoutputfolder,f)
                 if f.endswith(".csv") or f.endswith(".png"):
                     # upload the file to the dataset
-                    url=host+'api/uploadToDataset/'+datasetid+'?key=' + key
-                    r = requests.post(url, files={"File" : open(os.path.join(datasetoutputfolder,f), 'rb')}, verify=sslVerify)
-                    r.raise_for_status()
-                    uploadedfileid = r.json()['id']
-                    logger.debug("[%s] cellprofiler result file posted", uploadedfileid)
+                    new_fid=extractors.upload_file_to_dataset(os.path.join(datasetoutputfolder,f), parameters)
+                    new_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
+                    generated_files.append(new_url)
 
             mdata = {}
             mdata["extractor_id"]=extractorName
+            mdata["generated_files"]=generated_files
+            
             for f in os.listdir(datasetoutputfolder):
                 filemeta={}
                 filepath = os.path.join(datasetoutputfolder,f)
@@ -137,17 +100,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
                     metafield=f[f.rindex('_')+1:f.rindex('.')]
                     mdata[metafield]=metarows
             
-            headers={'Content-Type': 'application/json'}
-            url=host+'api/files/'+ fileid +'/metadata?key=' + key
-            rt = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
-            rt.raise_for_status()
-
-     
-
-            logger.debug("[%s] cellprofiler pipeline results posted", datasetid)
-
-        else:
-            logger.debug("[%s] files did not match this extractor requirements", datasetid)
+            extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
 
     finally:
         if os.path.isdir(datasetinputfolder):
@@ -161,101 +114,7 @@ def extract_cellprofiler(inputfile, host, fileid, datasetid, key):
             except:
                 pass
 
-        logger.debug("[%s] done with cellprofiler pipeline", datasetid)
                 
-        
-def on_message(channel, method, header, body):
-    global logger, extractorName
-    global sslVerify
-    
-    statusreport = {}
-
-    inputfile=None
-    try:
-        # parse body back from json
-        jbody=json.loads(body)
-        key=jbody['secretKey']
-        host=jbody['host']
-        logger.debug("host[%s]=",host)
-        fileid=jbody['id']
-        datasetid=jbody['datasetId']
-        if not (host.endswith('/')):
-            host += '/'
-
-        # print what we are doing
-        logger.debug("[%s] started processing", datasetid)
-
-        # for status reports
-        statusreport['file_id'] = fileid
-        statusreport['extractor_id'] = extractorName
-        statusreport['status'] = 'Downloading input file.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
-        channel.basic_publish(exchange='',
-                            routing_key=header.reply_to,
-                            properties=pika.BasicProperties(correlation_id = \
-                                                        header.correlation_id),
-                            body=json.dumps(statusreport)) 
-
-
-        # fetch data
-        url=host + 'api/files/' + fileid + '?key=' + key
-        r=requests.get(url, stream=True, verify=sslVerify)
-        r.raise_for_status()
-        (fd, inputfile)=tempfile.mkstemp()
-        with os.fdopen(fd, "w") as f:
-            for chunk in r.iter_content(chunk_size=10*1024):
-                f.write(chunk)
-
-        statusreport['status'] = 'Detecting cellprofiler pipeline metadata and associating with file.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
-        channel.basic_publish(exchange='',
-                            routing_key=header.reply_to,
-                            properties=pika.BasicProperties(correlation_id = \
-                                                        header.correlation_id),
-                            body=json.dumps(statusreport))
-
-
-        extract_cellprofiler(inputfile, host, fileid, datasetid, key)
-        
-    except subprocess.CalledProcessError as e:
-        logger.exception("[%s] error processing [exit code=%d]\n%s", datasetid, e.returncode, e.output)
-        statusreport['status'] = 'Error processing.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
-        channel.basic_publish(exchange='',
-                routing_key=header.reply_to,
-                properties=pika.BasicProperties(correlation_id = \
-                                                header.correlation_id),
-                body=json.dumps(statusreport)) 
-
-    except:
-        logger.exception("[%s] error processing", datasetid)
-        statusreport['status'] = 'Error processing.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S') 
-        channel.basic_publish(exchange='',
-                routing_key=header.reply_to,
-                properties=pika.BasicProperties(correlation_id = \
-                                                header.correlation_id),
-                body=json.dumps(statusreport)) 
-    finally:
-        statusreport['status'] = 'DONE.'
-        statusreport['start'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-        statusreport['end']=time.strftime('%Y-%m-%dT%H:%M:%S')
-        channel.basic_publish(exchange='',
-                            routing_key=header.reply_to,
-                            properties=pika.BasicProperties(correlation_id = \
-                                                        header.correlation_id),
-                            body=json.dumps(statusreport))
-        # if inputfile is not None and os.path.isfile(inputfile):
-        #     os.remove(inputfile)
-
-        # Ack
-        channel.basic_ack(method.delivery_tag)
-        logger.debug("[%s] finished processing", datasetid)
-
 
 if __name__ == "__main__":
     main()
