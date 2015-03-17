@@ -10,6 +10,7 @@ import os
 import itertools
 import logging
 import time
+import uuid
 from config import *
 import pymedici.extractors as extractors
 
@@ -60,7 +61,7 @@ def process_file(parameters):
     
     inputfile=parameters['inputfile']
     
-    ocrtext = ocr(inputfile, "tmpocr")
+    ocrtext = ocr(inputfile, str(uuid.uuid4()))
     mdata={}
     mdata["extractor_id"]=extractorName
     mdata["ocr_simple"]=[ocrtext]
