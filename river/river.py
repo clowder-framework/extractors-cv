@@ -14,6 +14,8 @@ import time
 import math
 import operator
 
+from anisodiff import *
+
 # from config import *
 # import extractors
 
@@ -21,8 +23,10 @@ count_prints=0
 
 def save_img(name, img):
     global count_prints
-    cv2.imwrite(str(count_prints)+"-"+name, img)                
+    p=str(count_prints)+"-"+name
+    cv2.imwrite(p, img)                
     count_prints=count_prints+1
+    return p
 
     
 
@@ -37,12 +41,14 @@ def process_file(filepath):
     imgcolor2=cv2.imread(filepath)
 
     img=cv2.resize(src=img, dsize=(width/4, height/4), interpolation=cv2.INTER_AREA) 
+    save_img("original.jpg", img)                
+
+
     imgcolor=cv2.resize(src=imgcolor, dsize=(width/4, height/4), interpolation=cv2.INTER_AREA)
     imgcolor2=cv2.resize(src=imgcolor2, dsize=(width/4, height/4), interpolation=cv2.INTER_AREA) 
     height, width = img.shape
 
 
-    save_img("original.jpg", img)                
 
     # creates black and white image
     (thresh, bw) = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY_INV)
@@ -65,6 +71,8 @@ def process_file(filepath):
     # get rid of everything outside the grid
     [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, imgcolor)
 
+    # reduce image noise
+    clean = clean_noise(clean) # clean # 
 
     # threshold the image to start working on the inside part of the grid
     (thresh, bw) = cv2.threshold(clean, 240, 255, cv2.THRESH_BINARY_INV)
@@ -92,6 +100,9 @@ def process_file(filepath):
     hf=min(height, max(p1[1], p2[1], p3[1], p4[1])+1)
 
 
+    save_img('bw-with-lines.jpg',bw)
+
+
     for col in range(w0, wf, 1):
         for row in range(h0, hf, 1):
             if mask_h[row, col]==255:
@@ -113,10 +124,10 @@ def process_file(filepath):
 
     save_img('clean-vertical.jpg',bw)
 
-
+    # get horizontal and vertical sums of bw:
+    # get_sums(bw, h0, hf, w0, wf)
 
     #clean up very small elements
-
     kernel = np.ones((3,3),np.uint8)
     dilation = cv2.dilate(bw,kernel,iterations = 1)
 
@@ -177,15 +188,59 @@ def process_file(filepath):
     dilation = cv2.dilate(bw,kernel,iterations = 2)
     save_img('bw-dilation.jpg',dilation)
 
+    res = cv2.bitwise_and(img,dilation)
+    res2 = cv2.bitwise_or(res,cv2.bitwise_not(dilation))
+    save_img('result.jpg',res2)
+
+
     # thin the dilated image
-    thin=thin_lines(dilation, w0, wf, h0, hf)
-    save_img('bw-thin.jpg',thin)
+    # thin=thin_lines(bw, w0, wf, h0, hf)
+    # save_img('bw-thin.jpg',thin)
+
+
+    # kernel = np.zeros((15,15),np.uint8)
+    # for i in range(0, 15):
+    #     kernel[12][i]=1
+    # dilation = cv2.dilate(bw,kernel,iterations = 1)
+    # save_img('bw-horizontal-dilation.jpg',dilation)
+
+
+    (thresh, bw) = cv2.threshold(res2, 250, 255, cv2.THRESH_BINARY_INV)
+    save_img('result-bw.jpg',bw)
+
+    # compute hough lines
+    min_line_length=10
+    max_line_gap=1
+    min_line_votes = 8
+    theta_resolution=1
+    rho=1
+
+
+    lines = cv2.HoughLinesP(image=bw, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    mask_v = np.zeros(bw.shape,np.uint8)
+    mask_h = np.zeros(bw.shape,np.uint8)
+
+    print lines[0]
+
+    for x1,y1,x2,y2 in lines[0]:
+        ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
+        print ang
+        if(ang>=85 or ang<=-85): #vertical lines
+            cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),1)
+            cv2.line(res2,(x1,y1),(x2,y2),(0, 255,0),2)
+        elif(ang>=-5 and ang<=5): #horizontal lines
+            cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),1)
+            cv2.line(res2,(x1,y1),(x2,y2),(0,255,0),2)
+
+    save_img('result-lines.jpg',res2)
+    save_img('mask-vertical.jpg',mask_v)
+    save_img('mask-horizontal.jpg',mask_h)
 
 
 def thin_lines(dilation, w0, wf, h0, hf):
 
     (thresh, thin) = cv2.threshold(dilation, 240, 255, cv2.THRESH_BINARY)
-    save_img('bw-thin.jpg',thin)
+    save_img('before-thin.jpg',thin)
 
     # print np.max(thin)
         
@@ -225,11 +280,11 @@ def get_rotation(bw, height, width):
     save_img("dilation-get-rotation.jpg", dilation)                
 
     # compute hough lines
-    min_line_length=int(0.4*width)+1;
-    max_line_gap=int(0.001*width)+1;
-    min_line_votes = int(0.4*width)+1;
-    theta_resolution=1;
-    rho=1;
+    min_line_length=int(0.4*width)+1
+    max_line_gap=int(0.001*width)+1
+    min_line_votes = int(0.4*width)+1
+    theta_resolution=1
+    rho=1
 
 
     lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
@@ -287,7 +342,7 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
     kernel = np.ones((3,3),np.uint8)
     dilation = cv2.dilate(bw,kernel,iterations = 1)
 
-    save_img("dilation-clean-outside.jpg", dilation)                
+    save_img("dilation-before-clean-outside.jpg", dilation)                
 
     # find contours
     contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
@@ -303,14 +358,14 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
     kernel = np.ones((3,3),np.uint8)
     dilation = cv2.dilate(bw,kernel,iterations = 3)
 
-    save_img("dilation-rotated.jpg", dilation)                
+    save_img("dilation-before-clean-outside-2.jpg", dilation)                
 
     # compute hough lines
-    min_line_length=int(0.8*width)+1;
-    max_line_gap=int(0.001*width)+1;
-    min_line_votes = int(0.6*width)+1;
-    theta_resolution=1;
-    rho=1;
+    min_line_length=int(0.8*width)+1
+    max_line_gap=int(0.001*width)+1
+    min_line_votes = int(0.6*width)+1
+    theta_resolution=1
+    rho=1
 
     lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
  
@@ -499,11 +554,49 @@ def clean_by_area(dilation, bw):
 def find_grid(bw, height, width, imgcolor2=None):
 
     # compute hough lines
-    min_line_length=int(0.6*width)+1;
-    max_line_gap=int(0.1*width)+1;
-    min_line_votes = int(0.4*width)+1;
-    theta_resolution=1;
-    rho=1;
+    min_line_length=int(0.2*width)+1
+    max_line_gap=int(0.01*width)+1
+    min_line_votes = int(0.1*width)+1
+    theta_resolution=1
+    rho=1
+
+    #clean up non-line elements
+    kernel = np.ones((3,3),np.uint8)
+    dilation = cv2.dilate(bw,kernel,iterations = 3)
+    save_img('dilation-for-grid.jpg',dilation)
+
+
+    lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    mask_v = np.zeros(bw.shape,np.uint8)
+    mask_h = np.zeros(bw.shape,np.uint8)
+
+    for x1,y1,x2,y2 in lines[0]:
+        ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
+
+        if(ang>=85 or ang<=-85): #vertical lines
+            cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),2)
+            if imgcolor2 is not None:
+                cv2.line(imgcolor2,(x1,y1),(x2,y2),(255,0,0),2)
+        elif(ang>=-5 and ang<=5): #horizontal lines
+            cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),2)
+            if imgcolor2 is not None:
+                cv2.line(imgcolor2,(x1,y1),(x2,y2),(0,255,0),2)
+
+
+    if imgcolor2 is not None:
+        save_img('houghlines.jpg',imgcolor2)
+
+    return [mask_v, mask_h]
+
+
+def find_grid_old(bw, height, width, imgcolor2=None):
+
+    # compute hough lines
+    min_line_length=int(0.6*width)+1
+    max_line_gap=int(0.1*width)+1
+    min_line_votes = int(0.4*width)+1
+    theta_resolution=1
+    rho=1
 
     #clean up non-line elements
     kernel = np.ones((3,3),np.uint8)
@@ -542,11 +635,11 @@ def find_grid(bw, height, width, imgcolor2=None):
     for x1,y1,x2,y2 in lines[0]:
         ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
 
-        if(ang>=70 or ang<=-70): #vertical lines
+        if(ang>=85 or ang<=-85): #vertical lines
             cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),2)
             if imgcolor2 is not None:
                 cv2.line(imgcolor2,(x1,y1),(x2,y2),(255,0,0),2)
-        elif(ang>=-20 and ang<=20): #horizontal lines
+        elif(ang>=-5 and ang<=5): #horizontal lines
             cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),2)
             if imgcolor2 is not None:
                 cv2.line(imgcolor2,(x1,y1),(x2,y2),(0,255,0),2)
@@ -587,6 +680,132 @@ def get_period(lines):
         dist.append(filtered_lines[i+1]-filtered_lines[i])
 
     return np.mean(dist)
+
+def clean_noise(img):
+
+    img=anisodiff(img=img, niter=15, option=1)
+    p=save_img("original-denoised.jpg", img)     
+    img=cv2.imread(p, cv2.CV_LOAD_IMAGE_GRAYSCALE)           
+
+    return img
+
+    # img=cv2.bilateralFilter(src=img,d=15,sigmaColor=105,sigmaSpace=105)
+
+    # img=cv2.bilateralFilter(src=img,d=15,sigmaColor=75,sigmaSpace=75)
+    # img=cv2.fastNlMeansDenoising(src=img, dst=None, h=20, templateWindowSize=5, searchWindowSize=15)
+
+
+    # img2=cv2.Laplacian(img, 3)
+    # save_img("edges.jpg", img2)
+
+
+def matchLines(template_lines, image_lines, max_translation, min_scale, max_scale):
+    lines = []
+    mina = 1
+    minb = 0
+    min_cost=sys.maxint
+
+    for tl in template_lines:
+        for il in image_lines:
+        
+            if(abs(tl-il) < max_translation):
+                for tl2 in template_lines:
+                    for il2 in image_lines:
+                        a = (il2-il) / (1.0*(tl2-tl))
+                        b = -a * tl + il
+                            
+                        if(a > min_scale and a < max_scale and abs(b) < max_translation):
+                            lines=[]
+                            
+                            for i in template_lines:
+                                lines.append(int(a*i + b))
+
+                                cost = dtwDistance(lines, image_lines)
+                            
+                            if(cost < min_cost):
+                                min_cost = cost
+                                mina = a
+                                minb = b
+
+    
+    print "Scale: " , mina , ", Translation: " , minb
+    
+    lines=[]    
+    for tl in template_lines:
+        lines.append(int(mina*tl + minb))
+    
+            
+    return lines
+
+
+def dtwDistance( a,  b):
+    d = np.zeros((len(a)+1, len(b)+1))
+           
+    for i in range(1, len(a)):
+        d[i][0] = sys.maxint
+    
+    for j in range(1, len(b)):
+        d[0][j] = sys.maxint
+    
+    for i in range(1, len(a)):
+        for j in range(1, len(b)):
+            tmpd = abs(a[i-1]-b[j-1])
+            d0 = d[i-1][j]         #Deletion
+            d1 = d[i][j-1]         #Insertion
+            d2 = d[i-1][j-1]       #Match/Substitution
+            
+            d[i][j] = tmpd + min(d0, d1, d2)
+    
+    return int(d[len(a)][len(b)])
+
+
+def get_sums(bw, h0, hf, w0, wf):
+    sums=[]
+    for row in range(h0, hf, 1):
+        c=0
+        for col in range(w0, wf, 1):
+            if not (bw[row, col]==0):
+                c=c+1
+        sums.append(c)
+
+    hor_sum = np.zeros(bw.shape,np.uint8)
+    # print "shape hor_sum: ", hor_sum.shape
+    # print "shape sums: ", len(sums)
+    # print "shape sums should be: ", (hf-h0)
+    c=0
+    for row in range(h0, hf, 1):
+        # print row, ",", sums[c]
+
+        for i in range(0, sums[c]):
+            cv2.line(hor_sum,(i,row),(i,row),(255,255,255),1)
+            # hor_sum[row, i]=1
+        c=c+1
+
+    save_img("horizontal-sums.jpg", hor_sum)                
+
+
+    sums=[]
+    for col in range(w0, wf, 1):
+        c=0
+        for row in range(h0, hf, 1):
+            if not (bw[row, col]==0):
+                c=c+1
+        sums.append(c)
+
+    vert_sum = np.zeros(bw.shape,np.uint8)
+    c=0
+    for col in range(w0, wf, 1):
+        # print row, ",", sums[c]
+
+        for i in range(0, sums[c]):
+            cv2.line(vert_sum,(col, i),(col, i),(255,255,255),1)
+            # hor_sum[row, i]=1
+        c=c+1
+
+    save_img("vertical-sums.jpg", vert_sum)                
+
+    return
+
 
 def main():
 
