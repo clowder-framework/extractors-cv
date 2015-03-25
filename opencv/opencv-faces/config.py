@@ -16,18 +16,8 @@ extractorName = "ncsa.cv.faces"
 # URL to be used for connecting to rabbitmq
 rabbitmqURL = None
 
-# address of host where rabbitmq is running
-rabbitmqHost = "localhost"
-
-#port to be used for connecting to rabbitmq
-rabbitmqPort = 5672
-
-# username and password to connect to rabbitmq
-rabbitmqUsername = None
-rabbitmqPassword = None
-
 # name of rabbitmq exchange
-exchange = "medici"
+rabbitmqExchange = "medici"
 
 # type of files to process
 messageType = "*.file.image.#"
@@ -37,4 +27,6 @@ sslVerify=False
 
 # path to opencv pretrained classifiers
 face_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
-					#'/opt/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
+
+
+
