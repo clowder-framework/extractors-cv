@@ -13,6 +13,7 @@ import cv2
 import time
 import math
 import operator
+import uuid
 
 from anisodiff import *
 
@@ -20,10 +21,11 @@ from anisodiff import *
 # import extractors
 
 count_prints=0
+base_file_name=str(uuid.uuid4())
 
 def save_img(name, img):
-    global count_prints
-    p=str(count_prints)+"-"+name
+    global count_prints, base_file_name
+    p=base_file_name+str(count_prints)+"-"+name
     cv2.imwrite(p, img)                
     count_prints=count_prints+1
     return p
@@ -61,7 +63,7 @@ def process_file(filepath):
          
     # get rotation of the image
     M=get_rotation(bw, height, width)
-    print M
+    # print M
 
     # unrotate images
     bw = cv2.warpAffine(bw,M,(width,height))
@@ -199,7 +201,7 @@ def process_file(filepath):
 
 
     M_t=cv2.invertAffineTransform(M)
-    print M_t
+    # print M_t
 
     # M_t=cv2.getRotationMatrix2D((width/2,height/2),rot_ang,1)
     dilation_t = cv2.warpAffine(dilation,M_t,(width,height))
@@ -209,8 +211,9 @@ def process_file(filepath):
     res_t_b = cv2.bitwise_and(img_original,dilation_t_b)
     res2_t_b = cv2.bitwise_or(res_t_b,cv2.bitwise_not(dilation_t_b))
     save_img('result-big.jpg',res2_t_b)
-
-
+    res_file=save_img('result-big.tif',res2_t_b)
+    transparent_file="transparent_"+res_file
+    subprocess.check_call(["convert", res_file, "-transparent", "white", transparent_file])
 
 
     # thin the dilated image
