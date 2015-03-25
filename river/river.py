@@ -33,19 +33,22 @@ def save_img(name, img):
 def process_file(filepath):
 
     # read the image and resize it so it is faster to process
+    img_original=cv2.imread(filepath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+
     img=cv2.imread(filepath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    height, width = img.shape
+    height_or, width_or = img.shape
 
     imgcolor=cv2.imread(filepath)
 
     imgcolor2=cv2.imread(filepath)
 
-    img=cv2.resize(src=img, dsize=(width/4, height/4), interpolation=cv2.INTER_AREA) 
+    img=cv2.resize(src=img, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
     save_img("original.jpg", img)                
 
 
-    imgcolor=cv2.resize(src=imgcolor, dsize=(width/4, height/4), interpolation=cv2.INTER_AREA)
-    imgcolor2=cv2.resize(src=imgcolor2, dsize=(width/4, height/4), interpolation=cv2.INTER_AREA) 
+    imgcolor=cv2.resize(src=imgcolor, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA)
+    imgcolor2=cv2.resize(src=imgcolor2, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
+    imgcolor3=cv2.resize(src=imgcolor2, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
     height, width = img.shape
 
 
@@ -58,12 +61,14 @@ def process_file(filepath):
          
     # get rotation of the image
     M=get_rotation(bw, height, width)
+    print M
 
     # unrotate images
     bw = cv2.warpAffine(bw,M,(width,height))
     img = cv2.warpAffine(img,M,(width,height))
     imgcolor = cv2.warpAffine(imgcolor,M,(width,height))
     imgcolor2 = cv2.warpAffine(imgcolor2,M,(width,height))
+    imgcolor3 = cv2.warpAffine(imgcolor2,M,(width,height))
 
     save_img("original-rotated.jpg", img)                
 
@@ -193,6 +198,21 @@ def process_file(filepath):
     save_img('result.jpg',res2)
 
 
+    M_t=cv2.invertAffineTransform(M)
+    print M_t
+
+    # M_t=cv2.getRotationMatrix2D((width/2,height/2),rot_ang,1)
+    dilation_t = cv2.warpAffine(dilation,M_t,(width,height))
+    save_img('bw-dilation-t.jpg',dilation_t)
+
+    dilation_t_b =cv2.resize(src=dilation_t, dsize=(width_or, height_or), interpolation=cv2.INTER_AREA)
+    res_t_b = cv2.bitwise_and(img_original,dilation_t_b)
+    res2_t_b = cv2.bitwise_or(res_t_b,cv2.bitwise_not(dilation_t_b))
+    save_img('result-big.jpg',res2_t_b)
+
+
+
+
     # thin the dilated image
     # thin=thin_lines(bw, w0, wf, h0, hf)
     # save_img('bw-thin.jpg',thin)
@@ -208,33 +228,42 @@ def process_file(filepath):
     (thresh, bw) = cv2.threshold(res2, 250, 255, cv2.THRESH_BINARY_INV)
     save_img('result-bw.jpg',bw)
 
-    # compute hough lines
-    min_line_length=10
-    max_line_gap=1
-    min_line_votes = 8
-    theta_resolution=1
-    rho=1
+    # # compute hough lines
+    # min_line_length=10
+    # max_line_gap=1
+    # min_line_votes = 8
+    # theta_resolution=1
+    # rho=1
 
 
-    lines = cv2.HoughLinesP(image=bw, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
-    mask_v = np.zeros(bw.shape,np.uint8)
-    mask_h = np.zeros(bw.shape,np.uint8)
+    # lines = cv2.HoughLinesP(image=bw, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    # mask_v = np.zeros(bw.shape,np.uint8)
+    # mask_h = np.zeros(bw.shape,np.uint8)
 
-    print lines[0]
+    # print lines[0]
 
-    for x1,y1,x2,y2 in lines[0]:
-        ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
-        print ang
-        if(ang>=85 or ang<=-85): #vertical lines
-            cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),1)
-            cv2.line(res2,(x1,y1),(x2,y2),(0, 255,0),2)
-        elif(ang>=-5 and ang<=5): #horizontal lines
-            cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),1)
-            cv2.line(res2,(x1,y1),(x2,y2),(0,255,0),2)
+    # for x1,y1,x2,y2 in lines[0]:
+    #     ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
+    #     print ang
+    #     if(ang>=85 or ang<=-85): #vertical lines
+    #         cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),1)
+    #         cv2.line(res2,(x1,y1),(x2,y2),(0, 255,0),2)
+    #     elif(ang>=-5 and ang<=5): #horizontal lines
+    #         cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),1)
+    #         cv2.line(res2,(x1,y1),(x2,y2),(0,255,0),2)
 
-    save_img('result-lines.jpg',res2)
-    save_img('mask-vertical.jpg',mask_v)
-    save_img('mask-horizontal.jpg',mask_h)
+    # save_img('result-lines.jpg',res2)
+    # save_img('mask-vertical.jpg',mask_v)
+    # save_img('mask-horizontal.jpg',mask_h)
+
+
+    contours, hierarchy = cv2.findContours(bw,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+
+    for cnt in contours:
+        cv2.drawContours(imgcolor3,[cnt],0,(255,0,0),-1)
+
+    save_img('result-contours.jpg',imgcolor3)
+
 
 
 def thin_lines(dilation, w0, wf, h0, hf):
@@ -438,8 +467,8 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
 
     # find intercept points
 
-    print "vertical slopes: ", mv_min, mv_max
-    print "horizontal slopes: ", mh_min, mh_max
+    # print "vertical slopes: ", mv_min, mv_max
+    # print "horizontal slopes: ", mh_min, mh_max
 
     # top left
     if mv_min==0:
@@ -541,7 +570,7 @@ def clean_by_area(dilation, bw):
     areas = [cv2.contourArea(cnt) for cnt in contours]
     # print areas
     areas_mean=np.mean(areas)
-    print "mean areas:", areas_mean
+    # print "mean areas:", areas_mean
     areas_median= np.median(areas)
     # print "median areas:", areas_median
 
