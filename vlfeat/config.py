@@ -22,5 +22,8 @@ rabbitmqExchange = "medici"
 # type of files to process
 messageType = "*.file.image.#"
 
+# matlab binary
+matlabBinary = '/usr/local/MATLAB/R2013a/bin/matlab'
+
 # trust certificates, set this to false for self signed certificates
 sslVerify=False
