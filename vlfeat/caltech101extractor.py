@@ -74,7 +74,7 @@ def run_classify(inputfile, outputfile):
     matlab_process.stdin.write("fprintf(fileID,'%f\\n', score);\n")
     matlab_process.stdin.write("fclose(fileID);\n")
 
-    while (not os.path.isfile(outputfile)):
+    while not os.path.isfile(outputfile) and not matlab_process.poll():
         time.sleep(0.1)
 
 if __name__ == "__main__":
