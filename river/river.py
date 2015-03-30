@@ -15,6 +15,7 @@ import math
 import operator
 import uuid
 
+from georef import *
 from anisodiff import *
 
 # from config import *
@@ -70,7 +71,6 @@ def process_file(filepath):
     img = cv2.warpAffine(img,M,(width,height))
     imgcolor = cv2.warpAffine(imgcolor,M,(width,height))
     imgcolor2 = cv2.warpAffine(imgcolor2,M,(width,height))
-    imgcolor3 = cv2.warpAffine(imgcolor2,M,(width,height))
 
     save_img("original-rotated.jpg", img)                
 
@@ -212,9 +212,11 @@ def process_file(filepath):
     res2_t_b = cv2.bitwise_or(res_t_b,cv2.bitwise_not(dilation_t_b))
     save_img('result-big.jpg',res2_t_b)
     res_file=save_img('result-big.tif',res2_t_b)
-    transparent_file="transparent_"+res_file
+    transparent_file=base_file_name+"_transparent.tif"
     subprocess.check_call(["convert", res_file, "-transparent", "white", transparent_file])
 
+    final_file=base_file_name+"_overlay.tif"
+    getGeoRef(filepath, transparent_file, final_file)
 
     # thin the dilated image
     # thin=thin_lines(bw, w0, wf, h0, hf)
@@ -841,10 +843,10 @@ def get_sums(bw, h0, hf, w0, wf):
 
 def main():
 
-    filepath="./TerEx_demo_1820s_str/39-44.tif"
+    # filepath="./TerEx_demo_1820s_str/39-44.tif"
     # filepath="./TerEx_demo_1820s_str/39-45.tif"
     # filepath="./TerEx_demo_1820s_str/39-71.tif"
-    # filepath="./TerEx_demo_1820s_str/39-72.tif"
+    filepath="./TerEx_demo_1820s_str/39-72.tif"
 
     process_file(filepath)
     
