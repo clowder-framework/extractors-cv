@@ -101,10 +101,10 @@ def process_file(filepath):
     # clean horizontal lines 
     (thresh, mask_h) = cv2.threshold(mask_h, 240, 255, cv2.THRESH_BINARY)
 
-    w0=max(1, min(p1[0], p2[0], p3[0], p4[0])-1)
-    wf=min(width, max(p1[0], p2[0], p3[0], p4[0])+1)
-    h0=max(1, min(p1[1], p2[1], p3[1], p4[1])-1)
-    hf=min(height, max(p1[1], p2[1], p3[1], p4[1])+1)
+    w0=max(1, min(p1[0], p2[0], p3[0], p4[0])-10)
+    wf=min(width, max(p1[0], p2[0], p3[0], p4[0])+10)
+    h0=max(1, min(p1[1], p2[1], p3[1], p4[1])-10)
+    hf=min(height, max(p1[1], p2[1], p3[1], p4[1])+10)
 
 
     save_img('bw-with-lines.jpg',bw)
@@ -200,6 +200,68 @@ def process_file(filepath):
     save_img('result.jpg',res2)
 
 
+    # trying to get rid of osme final noise
+
+    # clean=clean_noise(res2)
+    # # threshold the image to start working on the inside part of the grid
+    # (thresh, bw) = cv2.threshold(clean, 220, 255, cv2.THRESH_BINARY_INV)
+
+    # save_img('bw-clean-final.jpg',bw)
+
+    # dilation = cv2.dilate(bw,kernel,iterations = 2)
+    # save_img('bw-dilation.jpg',dilation)
+
+    # res = cv2.bitwise_and(img,dilation)
+    # res2 = cv2.bitwise_or(res,cv2.bitwise_not(dilation))
+    # save_img('result.jpg',res2)
+
+
+    # # trying to improve line erasing:
+
+    # (thresh, bw) = cv2.threshold(res2, 200, 255, cv2.THRESH_BINARY_INV)
+    # save_img('result-bw.jpg',bw)
+
+    # # compute hough lines
+    # min_line_length=10
+    # max_line_gap=1
+    # min_line_votes = 8
+    # theta_resolution=1
+    # rho=3
+
+
+    # lines = cv2.HoughLinesP(image=bw, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    # mask_v = np.zeros(bw.shape,np.uint8)
+    # mask_h = np.zeros(bw.shape,np.uint8)
+
+    # # print lines[0]
+
+    # for x1,y1,x2,y2 in lines[0]:
+    #     ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
+    #     # print ang
+    #     if(ang>=85 or ang<=-85): #vertical lines
+    #         cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),2)
+    #         cv2.line(res2,(x1,y1),(x2,y2),(0, 255,0),2)
+    #     elif(ang>=-5 and ang<=5): #horizontal lines
+    #         cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),2)
+    #         cv2.line(res2,(x1,y1),(x2,y2),(0,255,0),2)
+
+    # save_img('result-lines.jpg',res2)
+    # save_img('mask-vertical.jpg',mask_v)
+    # save_img('mask-horizontal.jpg',mask_h)
+
+    # mask = cv2.bitwise_not(cv2.bitwise_or(mask_v,mask_h))
+    # save_img('MASK.jpg',mask)
+    # bw = cv2.bitwise_and(bw,mask)
+    # save_img('NO-LINES.jpg',bw)
+
+    # #clean up very small elements
+    # kernel = np.ones((3,3),np.uint8)
+    # dilation = cv2.dilate(bw,kernel,iterations = 2)
+
+    # # bw = clean_by_area(dilation, bw)
+    # # save_img('BW.jpg',bw)
+
+
     M_t=cv2.invertAffineTransform(M)
     # print M_t
 
@@ -210,6 +272,10 @@ def process_file(filepath):
     dilation_t_b =cv2.resize(src=dilation_t, dsize=(width_or, height_or), interpolation=cv2.INTER_AREA)
     res_t_b = cv2.bitwise_and(img_original,dilation_t_b)
     res2_t_b = cv2.bitwise_or(res_t_b,cv2.bitwise_not(dilation_t_b))
+
+
+    # res2_t_b = clean_noise(res2_t_b)
+
     save_img('result-big.jpg',res2_t_b)
     res_file=save_img('result-big.tif',res2_t_b)
     transparent_file=base_file_name+"_transparent.tif"
@@ -218,56 +284,9 @@ def process_file(filepath):
     final_file=base_file_name+"_overlay.tif"
     getGeoRef(filepath, transparent_file, final_file)
 
-    # thin the dilated image
-    # thin=thin_lines(bw, w0, wf, h0, hf)
-    # save_img('bw-thin.jpg',thin)
 
 
-    # kernel = np.zeros((15,15),np.uint8)
-    # for i in range(0, 15):
-    #     kernel[12][i]=1
-    # dilation = cv2.dilate(bw,kernel,iterations = 1)
-    # save_img('bw-horizontal-dilation.jpg',dilation)
 
-
-    (thresh, bw) = cv2.threshold(res2, 250, 255, cv2.THRESH_BINARY_INV)
-    save_img('result-bw.jpg',bw)
-
-    # # compute hough lines
-    # min_line_length=10
-    # max_line_gap=1
-    # min_line_votes = 8
-    # theta_resolution=1
-    # rho=1
-
-
-    # lines = cv2.HoughLinesP(image=bw, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
-    # mask_v = np.zeros(bw.shape,np.uint8)
-    # mask_h = np.zeros(bw.shape,np.uint8)
-
-    # print lines[0]
-
-    # for x1,y1,x2,y2 in lines[0]:
-    #     ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
-    #     print ang
-    #     if(ang>=85 or ang<=-85): #vertical lines
-    #         cv2.line(mask_v,(x1,y1),(x2,y2),(255,255,255),1)
-    #         cv2.line(res2,(x1,y1),(x2,y2),(0, 255,0),2)
-    #     elif(ang>=-5 and ang<=5): #horizontal lines
-    #         cv2.line(mask_h,(x1,y1),(x2,y2),(255,255,255),1)
-    #         cv2.line(res2,(x1,y1),(x2,y2),(0,255,0),2)
-
-    # save_img('result-lines.jpg',res2)
-    # save_img('mask-vertical.jpg',mask_v)
-    # save_img('mask-horizontal.jpg',mask_h)
-
-
-    contours, hierarchy = cv2.findContours(bw,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
-
-    for cnt in contours:
-        cv2.drawContours(imgcolor3,[cnt],0,(255,0,0),-1)
-
-    save_img('result-contours.jpg',imgcolor3)
 
 
 
@@ -843,10 +862,10 @@ def get_sums(bw, h0, hf, w0, wf):
 
 def main():
 
-    # filepath="./TerEx_demo_1820s_str/39-44.tif"
+    filepath="./TerEx_demo_1820s_str/39-44.tif"
     # filepath="./TerEx_demo_1820s_str/39-45.tif"
     # filepath="./TerEx_demo_1820s_str/39-71.tif"
-    filepath="./TerEx_demo_1820s_str/39-72.tif"
+    # filepath="./TerEx_demo_1820s_str/39-72.tif"
 
     process_file(filepath)
     
