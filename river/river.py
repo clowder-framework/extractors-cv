@@ -281,11 +281,14 @@ def process_file(parameters):
         upload_file_metadata(new_fid, mdata, host, key)   
 
     finally:    
-        for f in os.listdir(base_dir_name):
-            # print f
-            os.remove(os.path.join(base_dir_name, f))
+        print "deleting files on tmp dir: ", base_dir_name
+        if os.path.exists(base_dir_name):
+            for f in os.listdir(base_dir_name):
+                print f
+                os.remove(os.path.join(base_dir_name, f))
         # print base_dir_name
-        os.removedirs(base_dir_name)
+        if os.path.exists(base_dir_name):
+            os.removedirs(base_dir_name)
 
 
 
@@ -314,9 +317,9 @@ def upload_file_to_dataset(filepath, datasetid, host, key):
     uploadedfileid = None
     if(not host.endswith("/")):
         host = host+"/"    
-    print datasetid 
+    # print datasetid 
     url = host+'api/uploadToDataset/'+datasetid+'?key=' + key
-    print "url:"+url
+    # print "url:"+url
     
     f = open(filepath,'rb')
     r = requests.post(url, files={"File":f}, verify=sslVerify)
@@ -336,7 +339,7 @@ def create_empty_dataset(dataset_description, host, key):
     r = requests.post(url, headers=headers, data=json.dumps(dataset_description), verify=sslVerify)
     r.raise_for_status()
     datasetid = r.json()['id']
-    print 'created an empty dataset : '+ str(datasetid)
+    # print 'created an empty dataset : '+ str(datasetid)
     return datasetid
 
 
