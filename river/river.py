@@ -22,11 +22,14 @@ from anisodiff import *
 # import extractors
 
 count_prints=0
-base_file_name=str(uuid.uuid4())
+base_dir_name=str(uuid.uuid4())
+os.mkdir(base_dir_name)
+base_dir_name=os.path.join("./",base_dir_name)
+
 
 def save_img(name, img):
-    global count_prints, base_file_name
-    p=base_file_name+"-"+str(count_prints)+"-"+name
+    global count_prints, base_dir_name
+    p=os.path.join(base_dir_name, str(count_prints)+"-"+name)
     cv2.imwrite(p, img)                
     count_prints=count_prints+1
     return p
@@ -34,205 +37,288 @@ def save_img(name, img):
     
 
 def process_file(filepath):
+    # filepath=parameters['inputfile']
+    # fileid = parameters['fileid']
+    # host = parameters['host'] 
+    # key = parameters['secretKey']
+    # if(not host.endswith("/")):
+    #     host = host+"/"
 
-    # file_name, file_extension = os.path.splitext(os.path.basename(filepath))
+    try:
 
-    # read the image and resize it so it is faster to process
-    img_original=cv2.imread(filepath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        file_name, file_extension = os.path.splitext(os.path.basename(filepath))
 
-    img=cv2.imread(filepath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    height_or, width_or = img.shape
+        # read the image and resize it so it is faster to process
+        img_original=cv2.imread(filepath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
-    # imgcolor=cv2.imread(filepath)
+        img=cv2.imread(filepath, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        height_or, width_or = img.shape
 
-    # imgcolor2=cv2.imread(filepath)
+        # imgcolor=cv2.imread(filepath)
 
-    img=cv2.resize(src=img, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
-    # save_img("original.jpg", img)                
+        # imgcolor2=cv2.imread(filepath)
 
-
-    # imgcolor=cv2.resize(src=imgcolor, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA)
-    # imgcolor2=cv2.resize(src=imgcolor2, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
-    # imgcolor3=cv2.resize(src=imgcolor2, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
-    height, width = img.shape
-
-
-
-    # creates black and white image
-    (thresh, bw) = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY_INV)
-
-    # fill margins with background pixels
-    bw=remove_margins(bw, height, width)
-         
-    # get rotation of the image
-    M=get_rotation(bw, height, width)
-    # print M
-
-    # unrotate images
-    bw = cv2.warpAffine(bw,M,(width,height))
-    img = cv2.warpAffine(img,M,(width,height))
-    # imgcolor = cv2.warpAffine(imgcolor,M,(width,height))
-    # imgcolor2 = cv2.warpAffine(imgcolor2,M,(width,height))
-
-    # save_img("original-rotated.jpg", img)                
+        img=cv2.resize(src=img, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
+        # save_img("original.jpg", img)                
 
 
-    # get rid of everything outside the grid
-    # [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, imgcolor)
-    [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, None)
-
-    # reduce image noise
-    clean = clean_noise(clean) # clean # 
-
-    # threshold the image to start working on the inside part of the grid
-    (thresh, bw) = cv2.threshold(clean, 240, 255, cv2.THRESH_BINARY_INV)
-
-    # save_img('bw-clean-external.jpg',bw)
-    
-
-    # clean up completely disconnected small areas
-    bw=clean_small_regions(bw)
+        # imgcolor=cv2.resize(src=imgcolor, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA)
+        # imgcolor2=cv2.resize(src=imgcolor2, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
+        # imgcolor3=cv2.resize(src=imgcolor2, dsize=(width_or/4, height_or/4), interpolation=cv2.INTER_AREA) 
+        height, width = img.shape
 
 
-    #find grid lines
-    # [mask_v, mask_h]=find_grid(bw, height, width, imgcolor2)
-    [mask_v, mask_h]=find_grid(bw, height, width, None)
 
-    # save_img('mask-vertical.jpg',mask_v)
-    # save_img('mask-horizontal.jpg',mask_h)
+        # creates black and white image
+        (thresh, bw) = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY_INV)
+
+        # fill margins with background pixels
+        bw=remove_margins(bw, height, width)
+             
+        # get rotation of the image
+        M=get_rotation(bw, height, width)
+        # print M
+
+        # unrotate images
+        bw = cv2.warpAffine(bw,M,(width,height))
+        img = cv2.warpAffine(img,M,(width,height))
+        # imgcolor = cv2.warpAffine(imgcolor,M,(width,height))
+        # imgcolor2 = cv2.warpAffine(imgcolor2,M,(width,height))
+
+        # save_img("original-rotated.jpg", img)                
 
 
-    # clean horizontal lines 
-    (thresh, mask_h) = cv2.threshold(mask_h, 240, 255, cv2.THRESH_BINARY)
+        # get rid of everything outside the grid
+        # [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, imgcolor)
+        [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, None)
 
-    w0=max(1, min(p1[0], p2[0], p3[0], p4[0])-10)
-    wf=min(width, max(p1[0], p2[0], p3[0], p4[0])+10)
-    h0=max(1, min(p1[1], p2[1], p3[1], p4[1])-10)
-    hf=min(height, max(p1[1], p2[1], p3[1], p4[1])+10)
+        # reduce image noise
+        clean = clean_noise(clean) # clean # 
+
+        # threshold the image to start working on the inside part of the grid
+        (thresh, bw) = cv2.threshold(clean, 240, 255, cv2.THRESH_BINARY_INV)
+
+        # save_img('bw-clean-external.jpg',bw)
+        
+
+        # clean up completely disconnected small areas
+        bw=clean_small_regions(bw)
 
 
-    # save_img('bw-with-lines.jpg',bw)
+        #find grid lines
+        # [mask_v, mask_h]=find_grid(bw, height, width, imgcolor2)
+        [mask_v, mask_h]=find_grid(bw, height, width, None)
+
+        # save_img('mask-vertical.jpg',mask_v)
+        # save_img('mask-horizontal.jpg',mask_h)
 
 
-    for col in range(w0, wf, 1):
-        for row in range(h0, hf, 1):
-            if mask_h[row, col]==255:
-                # if bw[row-1, col]==0 and bw[row+1, col]==0 and bw[row, col-1]==0 and bw[row, col+1]==0:
-                if bw[row-1, col]==0:# and bw[row-1, col-1]==0:# and bw[row-1, col+1]==0:
-                    bw[row, col]=0
+        # clean horizontal lines 
+        (thresh, mask_h) = cv2.threshold(mask_h, 240, 255, cv2.THRESH_BINARY)
 
-    # save_img('clean-horizontal.jpg',bw)
+        w0=max(1, min(p1[0], p2[0], p3[0], p4[0])-10)
+        wf=min(width, max(p1[0], p2[0], p3[0], p4[0])+10)
+        h0=max(1, min(p1[1], p2[1], p3[1], p4[1])-10)
+        hf=min(height, max(p1[1], p2[1], p3[1], p4[1])+10)
 
-    # clean vertical lines 
-    (thresh, mask_v) = cv2.threshold(mask_v, 240, 255, cv2.THRESH_BINARY)
 
-    for row in range(h0, hf, 1):
+        # save_img('bw-with-lines.jpg',bw)
+
+
         for col in range(w0, wf, 1):
-            if mask_v[row, col]==255:
-                # if bw[row-1, col]==0 and bw[row+1, col]==0 and bw[row, col-1]==0 and bw[row, col+1]==0:
-                if bw[row, col-1]==0:# and bw[row-1, col-1]==0:#  and bw[row+1, col-1]==0 :
-                    bw[row, col]=0
+            for row in range(h0, hf, 1):
+                if mask_h[row, col]==255:
+                    # if bw[row-1, col]==0 and bw[row+1, col]==0 and bw[row, col-1]==0 and bw[row, col+1]==0:
+                    if bw[row-1, col]==0:# and bw[row-1, col-1]==0:# and bw[row-1, col+1]==0:
+                        bw[row, col]=0
 
-    # save_img('clean-vertical.jpg',bw)
+        # save_img('clean-horizontal.jpg',bw)
 
-    # get horizontal and vertical sums of bw:
-    # get_sums(bw, h0, hf, w0, wf)
+        # clean vertical lines 
+        (thresh, mask_v) = cv2.threshold(mask_v, 240, 255, cv2.THRESH_BINARY)
 
-    #clean up very small elements
-    kernel = np.ones((3,3),np.uint8)
-    dilation = cv2.dilate(bw,kernel,iterations = 1)
+        for row in range(h0, hf, 1):
+            for col in range(w0, wf, 1):
+                if mask_v[row, col]==255:
+                    # if bw[row-1, col]==0 and bw[row+1, col]==0 and bw[row, col-1]==0 and bw[row, col+1]==0:
+                    if bw[row, col-1]==0:# and bw[row-1, col-1]==0:#  and bw[row+1, col-1]==0 :
+                        bw[row, col]=0
 
-    # save_img("dilation.jpg", dilation)                
+        # save_img('clean-vertical.jpg',bw)
 
-    # find contours
-    contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
+        # get horizontal and vertical sums of bw:
+        # get_sums(bw, h0, hf, w0, wf)
 
-    for cnt in contours:
-        if cv2.contourArea(cnt)<20:
-            cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+        #clean up very small elements
+        kernel = np.ones((3,3),np.uint8)
+        dilation = cv2.dilate(bw,kernel,iterations = 1)
 
-    # save_img('bw-clean.jpg',bw)
+        # save_img("dilation.jpg", dilation)                
+
+        # find contours
+        contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
+
+        for cnt in contours:
+            if cv2.contourArea(cnt)<20:
+                cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+
+        # save_img('bw-clean.jpg',bw)
 
 
-    kernel = np.ones((5,5),np.uint8)
-    dilation = cv2.dilate(bw,kernel,iterations = 1)
-    # save_img('bw-dilation.jpg',dilation)
+        kernel = np.ones((5,5),np.uint8)
+        dilation = cv2.dilate(bw,kernel,iterations = 1)
+        # save_img('bw-dilation.jpg',dilation)
 
 
-    dilation = cv2.dilate(dilation,kernel,iterations = 1)
-    # save_img('bw-dilation.jpg',dilation)
+        dilation = cv2.dilate(dilation,kernel,iterations = 1)
+        # save_img('bw-dilation.jpg',dilation)
 
 
-    contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
-    # cnts = sorted(contours, key = cv2.contourArea, reverse = True)[:10]
-    areas = [cv2.contourArea(cnt) for cnt in contours]
-    # print areas
-    areas_mean=np.mean(areas)
-    # print "mean areas:", areas_mean
-    areas_median= np.median(areas)
-    # print "median areas:", areas_median
+        contours, hierarchy = cv2.findContours(dilation,cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE)
+        # cnts = sorted(contours, key = cv2.contourArea, reverse = True)[:10]
+        areas = [cv2.contourArea(cnt) for cnt in contours]
+        # print areas
+        areas_mean=np.mean(areas)
+        # print "mean areas:", areas_mean
+        areas_median= np.median(areas)
+        # print "median areas:", areas_median
 
-    for cnt in contours:
-        if cv2.contourArea(cnt)<2*areas_median:
-            cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+        for cnt in contours:
+            if cv2.contourArea(cnt)<2*areas_median:
+                cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
 
-    # save_img('bw-clean.jpg',bw)
+        # save_img('bw-clean.jpg',bw)
 
-    for cnt in contours:
-        # print cv2.contourArea(cnt)
+        for cnt in contours:
+            # print cv2.contourArea(cnt)
+            
+            x,y,w,h = cv2.boundingRect(cnt)
+            
+            if (1.0*cv2.contourArea(cnt))/(w*h)>0.7:
+                cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+
+        # save_img('bw-clean.jpg',bw)
+
+
+        for cnt in contours:
+            if cv2.contourArea(cnt)<areas_mean:
+                cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+
+
+        # save_img('bw-clean.jpg',bw)
+
+        dilation = cv2.dilate(bw,kernel,iterations = 2)
+        # save_img('bw-dilation.jpg',dilation)
+
+        res = cv2.bitwise_and(img,dilation)
+        res2 = cv2.bitwise_or(res,cv2.bitwise_not(dilation))
+        # save_img('result.jpg',res2)
+
+
+        M_t=cv2.invertAffineTransform(M)
+        # print M_t
+
+        # M_t=cv2.getRotationMatrix2D((width/2,height/2),rot_ang,1)
+        dilation_t = cv2.warpAffine(dilation,M_t,(width,height))
+        # save_img('bw-dilation-t.jpg',dilation_t)
+
+        dilation_t_b =cv2.resize(src=dilation_t, dsize=(width_or, height_or), interpolation=cv2.INTER_AREA)
+        res_t_b = cv2.bitwise_and(img_original,dilation_t_b)
+        res2_t_b = cv2.bitwise_or(res_t_b,cv2.bitwise_not(dilation_t_b))
+
+
+        # res2_t_b = clean_noise(res2_t_b)
+
+        # save_img('result-big.jpg',res2_t_b)
+        res_file=save_img('result-big.tif',res2_t_b)
+        transparent_file=os.path.join(base_dir_name,"transparent.tif")
+        subprocess.check_call(["convert", res_file, "-transparent", "white", transparent_file])
+
+        final_file=os.path.join(base_dir_name,file_name+"_overlay.tif")
+        getGeoRef(filepath, transparent_file, final_file)
+
+
+        # datasetid = create_empty_dataset(dataset_description="River overlay based on "+os.path.basename(filepath), host, key)
+        # new_fid=upload_file_to_dataset(final_file, datasetid, host, key)
+        # generated_file_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
+
+        # #add metadata to original file
+        # mdata = {}
+        # mdata["extractor_id"]=extractorName
+        # mdata["generated_file"]=generated_file_url
+        # mdata["generated_dataset"] = host + 'datasets/'+datasetid
+        # extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
+
+        # #build metadata for derived file and dataset
+        # mdata = {}
+        # mdata['generated_from'] = extractors.get_file_URL(fileid, parameters)
+        # mdata['extractor_id'] = extractorName
+
+        # #add metadata to derived dataset        
+        # upload_dataset_metadata(datasetid, mdata, host, key)
         
-        x,y,w,h = cv2.boundingRect(cnt)
-        
-        if (1.0*cv2.contourArea(cnt))/(w*h)>0.7:
-            cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
+        # #add metadata to derived file        
+        # upload_file_metadata(new_fid, mdata, host, key)   
 
-    # save_img('bw-clean.jpg',bw)
-
-
-    for cnt in contours:
-        if cv2.contourArea(cnt)<areas_mean:
-            cv2.drawContours(bw,[cnt],0,(0,0,0),-1)
-
-
-    # save_img('bw-clean.jpg',bw)
-
-    dilation = cv2.dilate(bw,kernel,iterations = 2)
-    # save_img('bw-dilation.jpg',dilation)
-
-    res = cv2.bitwise_and(img,dilation)
-    res2 = cv2.bitwise_or(res,cv2.bitwise_not(dilation))
-    # save_img('result.jpg',res2)
+    finally:    
+        for f in os.listdir(base_dir_name):
+            print f
+            # if os.path.basename(f).startswith(base_file_name):
+            os.remove(os.path.join(base_dir_name, f))
+        print base_dir_name
+        os.removedirs(base_dir_name)
 
 
-    M_t=cv2.invertAffineTransform(M)
-    # print M_t
 
-    # M_t=cv2.getRotationMatrix2D((width/2,height/2),rot_ang,1)
-    dilation_t = cv2.warpAffine(dilation,M_t,(width,height))
-    # save_img('bw-dilation-t.jpg',dilation_t)
+def upload_dataset_metadata(datasetid, mdata, host, key):
 
-    dilation_t_b =cv2.resize(src=dilation_t, dsize=(width_or, height_or), interpolation=cv2.INTER_AREA)
-    res_t_b = cv2.bitwise_and(img_original,dilation_t_b)
-    res2_t_b = cv2.bitwise_or(res_t_b,cv2.bitwise_not(dilation_t_b))
-
-
-    # res2_t_b = clean_noise(res2_t_b)
-
-    # save_img('result-big.jpg',res2_t_b)
-    res_file=save_img('result-big.tif',res2_t_b)
-    transparent_file=base_file_name+"_transparent.tif"
-    subprocess.check_call(["convert", res_file, "-transparent", "white", transparent_file])
-
-    final_file=base_file_name+"_overlay.tif"
-    getGeoRef(filepath, transparent_file, final_file)
+    headers = {'Content-Type': 'application/json'}
+    if(not host.endswith("/")):
+        host = host+"/"
+    url = host+'api/datasets/'+ datasetid +'/metadata?key=' + key
+    r = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
+    r.raise_for_status()
 
 
-    for f in os.listdir("./"):
-        # print f
-        if os.path.basename(f).startswith(base_file_name):
-            os.remove(f)
+def upload_file_metadata(fileid, mdata, host, key):
+    global sslVerify
+
+    headers={'Content-Type': 'application/json'}
+
+    url=host+'api/files/'+ fileid +'/metadata?key=' + key
+    
+    r = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
+    r.raise_for_status()
 
 
+def upload_file_to_dataset(filepath, datasetid, host, key):
+    uploadedfileid = None
+    if(not host.endswith("/")):
+        host = host+"/"    
+    print datasetid 
+    url = host+'api/uploadToDataset/'+datasetid+'?key=' + key
+    print "url:"+url
+    
+    f = open(filepath,'rb')
+    r = requests.post(url, files={"File":f}, verify=sslVerify)
+    r.raise_for_status()
+    uploadedfileid = r.json()['id']
+    return uploadedfileid
+
+def create_empty_dataset(dataset_description, host, key):
+    global sslVerify
+    
+    headers = {'Content-Type': 'application/json'}
+    if(not host.endswith("/")):
+        host = host+"/"
+
+    url = host+'api/datasets/createempty?key=' + key
+
+    r = requests.post(url, headers=headers, data=json.dumps(dataset_description), verify=sslVerify)
+    r.raise_for_status()
+    datasetid = r.json()['id']
+    print 'created an empty dataset : '+ str(datasetid)
+    return datasetid
 
 
 def thin_lines(dilation, w0, wf, h0, hf):
