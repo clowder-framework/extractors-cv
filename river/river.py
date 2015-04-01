@@ -18,13 +18,27 @@ import uuid
 from georef import *
 from anisodiff import *
 
-# from config import *
-# import extractors
+from config import *
+import pymedici.extractors as extractors
+
 
 count_prints=0
 base_dir_name=str(uuid.uuid4())
 os.mkdir(base_dir_name)
 base_dir_name=os.path.join("./",base_dir_name)
+
+
+def main():
+    global extractorName, messageType, rabbitmqExchange, rabbitmqURL    
+
+    #set logging
+    logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
+    logging.getLogger('pymedici.extractors').setLevel(logging.INFO)
+
+    #connect to rabbitmq
+    extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
+        rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL)
+
 
 
 def save_img(name, img):
@@ -36,13 +50,15 @@ def save_img(name, img):
 
     
 
-def process_file(filepath):
-    # filepath=parameters['inputfile']
-    # fileid = parameters['fileid']
-    # host = parameters['host'] 
-    # key = parameters['secretKey']
-    # if(not host.endswith("/")):
-    #     host = host+"/"
+def process_file(parameters):
+    global extractorName
+
+    filepath=parameters['inputfile']
+    fileid = parameters['fileid']
+    host = parameters['host'] 
+    key = parameters['secretKey']
+    if(not host.endswith("/")):
+        host = host+"/"
 
     try:
 
@@ -238,34 +254,33 @@ def process_file(filepath):
         getGeoRef(filepath, transparent_file, final_file)
 
 
-        # datasetid = create_empty_dataset(dataset_description="River overlay based on "+os.path.basename(filepath), host, key)
-        # new_fid=upload_file_to_dataset(final_file, datasetid, host, key)
-        # generated_file_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
+        datasetid = create_empty_dataset(dataset_description="River overlay based on "+os.path.basename(filepath), host, key)
+        new_fid=upload_file_to_dataset(final_file, datasetid, host, key)
+        generated_file_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
 
-        # #add metadata to original file
-        # mdata = {}
-        # mdata["extractor_id"]=extractorName
-        # mdata["generated_file"]=generated_file_url
-        # mdata["generated_dataset"] = host + 'datasets/'+datasetid
-        # extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
+        #add metadata to original file
+        mdata = {}
+        mdata["extractor_id"]=extractorName
+        mdata["generated_file"]=generated_file_url
+        mdata["generated_dataset"] = host + 'datasets/'+datasetid
+        extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
 
-        # #build metadata for derived file and dataset
-        # mdata = {}
-        # mdata['generated_from'] = extractors.get_file_URL(fileid, parameters)
-        # mdata['extractor_id'] = extractorName
+        #build metadata for derived file and dataset
+        mdata = {}
+        mdata['generated_from'] = extractors.get_file_URL(fileid, parameters)
+        mdata['extractor_id'] = extractorName
 
-        # #add metadata to derived dataset        
-        # upload_dataset_metadata(datasetid, mdata, host, key)
+        #add metadata to derived dataset        
+        upload_dataset_metadata(datasetid, mdata, host, key)
         
-        # #add metadata to derived file        
-        # upload_file_metadata(new_fid, mdata, host, key)   
+        #add metadata to derived file        
+        upload_file_metadata(new_fid, mdata, host, key)   
 
     finally:    
         for f in os.listdir(base_dir_name):
-            print f
-            # if os.path.basename(f).startswith(base_file_name):
+            # print f
             os.remove(os.path.join(base_dir_name, f))
-        print base_dir_name
+        # print base_dir_name
         os.removedirs(base_dir_name)
 
 
@@ -851,20 +866,6 @@ def get_sums(bw, h0, hf, w0, wf):
     return
 
 
-def main():
-
-    filepath="./TerEx_demo_1820s_str/39-44.tif"
-    # filepath="./TerEx_demo_1820s_str/39-45.tif"
-    # filepath="./TerEx_demo_1820s_str/39-71.tif"
-    # filepath="./TerEx_demo_1820s_str/39-72.tif"
-
-    process_file(filepath)
-    
-
-
-
 
 if __name__ == "__main__":
     main()
-
-
