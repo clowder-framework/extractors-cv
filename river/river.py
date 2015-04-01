@@ -254,8 +254,10 @@ def process_file(parameters):
         final_file=os.path.join(base_dir_name,file_name+"_overlay.tif")
         getGeoRef(filepath, transparent_file, final_file)
 
-
-        datasetid = create_empty_dataset("River overlay based on "+os.path.basename(filepath), host, key)
+        dataset_des={}
+        dataset_des['name']= "River overlay for file "+os.path.basename(filepath)+"(file id "+ fileid +")"
+        dataset_des['description'] = "River overlay based on "+os.path.basename(filepath)+"(file id "+ fileid +") by "+extractorName+ " at "+ time.strftime('%Y-%m-%dT%H:%M:%S')
+        datasetid = create_empty_dataset(dataset_des,host,key)
         new_fid=upload_file_to_dataset(final_file, datasetid, host, key)
         generated_file_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
 
