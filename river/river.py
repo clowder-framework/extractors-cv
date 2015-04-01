@@ -11,6 +11,7 @@ import itertools
 import numpy as np
 import cv2
 import time
+import logging
 import math
 import operator
 import uuid
