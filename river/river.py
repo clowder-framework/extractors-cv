@@ -254,7 +254,7 @@ def process_file(parameters):
         getGeoRef(filepath, transparent_file, final_file)
 
 
-        datasetid = create_empty_dataset(dataset_description="River overlay based on "+os.path.basename(filepath), host, key)
+        datasetid = create_empty_dataset("River overlay based on "+os.path.basename(filepath), host, key)
         new_fid=upload_file_to_dataset(final_file, datasetid, host, key)
         generated_file_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
 
