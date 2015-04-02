@@ -23,10 +23,6 @@ from config import *
 import pymedici.extractors as extractors
 
 
-count_prints=0
-base_dir_name=str(uuid.uuid4())
-os.mkdir(base_dir_name)
-base_dir_name=os.path.join("./",base_dir_name)
 
 
 def main():
@@ -52,7 +48,13 @@ def save_img(name, img):
     
 
 def process_file(parameters):
-    global extractorName
+    global extractorName, base_dir_name, count_prints
+
+    count_prints=0
+    base_dir_name=str(uuid.uuid4())
+    os.mkdir(base_dir_name)
+    base_dir_name=os.path.join("./",base_dir_name)
+
 
     filepath=parameters['inputfile']
     fileid = parameters['fileid']
@@ -94,6 +96,8 @@ def process_file(parameters):
              
         # get rotation of the image
         M=get_rotation(bw, height, width)
+        if M is None:
+            return
         # print M
 
         # unrotate images
@@ -108,6 +112,9 @@ def process_file(parameters):
         # get rid of everything outside the grid
         # [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, imgcolor)
         [clean, p1, p2, p3, p4]=clean_outside_grid(img, bw, height, width, None)
+
+        if clean is None:
+            return
 
         # reduce image noise
         clean = clean_noise(clean) # clean # 
@@ -125,6 +132,8 @@ def process_file(parameters):
         #find grid lines
         # [mask_v, mask_h]=find_grid(bw, height, width, imgcolor2)
         [mask_v, mask_h]=find_grid(bw, height, width, None)
+        if mask_v is None:
+            return
 
         # save_img('mask-vertical.jpg',mask_v)
         # save_img('mask-horizontal.jpg',mask_h)
@@ -389,6 +398,10 @@ def get_rotation(bw, height, width):
 
 
     lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+    
+    if (lines is None) or (lines[0] is None):
+        return None
+
     angs = []
     for x1,y1,x2,y2 in lines[0]:
         ang = math.degrees(math.atan2((y2-y1),(x2-x1)))
@@ -469,6 +482,9 @@ def clean_outside_grid(img, bw, height, width, imgcolor=None):
     rho=1
 
     lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+
+    if (lines is None) or (lines[0] is None):
+        return [None, None, None, None, None]
  
     # find limiting lines
     vert_x_min=width
@@ -668,6 +684,10 @@ def find_grid(bw, height, width, imgcolor2=None):
 
 
     lines = cv2.HoughLinesP(image=dilation, rho=rho, theta=theta_resolution*math.pi/180, threshold=min_line_votes, minLineLength=min_line_length, maxLineGap=max_line_gap)
+
+    if (lines is None) or (lines[0] is None):
+        return [None, None]
+
     mask_v = np.zeros(bw.shape,np.uint8)
     mask_h = np.zeros(bw.shape,np.uint8)
 
