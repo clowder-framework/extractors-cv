@@ -70,7 +70,8 @@ def getOriginalGeoRef(inraster):
 
 def convert(extractedJpg, outTif, ext, prj):
 	cmd = 'gdal_translate'
-	o  = subprocess.check_output([cmd, '-a_ullr',ext[0], ext[1], ext[2], ext[3],'-a_srs', prj, extractedJpg, outTif])
+	o  = subprocess.check_output([cmd, '-a_ullr',ext[0], ext[1], ext[2], ext[3],'-a_srs', prj, '-a_nodata', '255', extractedJpg, outTif])
+	# o  = subprocess.check_output([cmd, '-a_ullr',ext[0], ext[1], ext[2], ext[3],'-a_srs', prj, extractedJpg, outTif])
 	#o  = subprocess.check_output(['/usr/bin/gdal_translate', '-a_ullr', ext, '-a_srs', prj, extractedJpg, outTif])
 	print o
 	return

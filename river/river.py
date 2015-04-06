@@ -257,12 +257,12 @@ def process_file(parameters):
 
         # save_img('result-big.jpg',res2_t_b)
         res_file=save_img('result-big.tif',res2_t_b)
-        transparent_file=os.path.join(base_dir_name,"transparent.tif")
-        subprocess.check_call(["convert", res_file, "-transparent", "white", transparent_file])
+        # transparent_file=os.path.join(base_dir_name,"transparent.tif")
+        # subprocess.check_call(["convert", res_file, "-transparent", "white", transparent_file])
 
-        # final_file=os.path.join(base_dir_name,file_name+"overlay.tif")
         final_file=os.path.join(base_dir_name,"overlay.tif")
-        getGeoRef(filepath, transparent_file, final_file)
+        getGeoRef(filepath, res_file, final_file)
+        # getGeoRef(filepath, transparent_file, final_file)
 
         dataset_des={}
         dataset_des['name']= "River overlay for file id "+ fileid +")"
