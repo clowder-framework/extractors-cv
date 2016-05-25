@@ -28,7 +28,7 @@ messageType = "*.file.image.#", "extractors."+extractorName
 sslVerify=os.getenv('RABBITMQ_SSLVERIFY', False)
 
 # Instance of Clowder on which to register extractor
-clowderUrl = "http://localhost:9000"
+clowderUrl = os.getenv(CLOWDER_URL, "http://localhost:9000")
 
 # key to register extractor at startup
-apiKey = ""
+apiKey = os.getenv(API_KEY, "")
