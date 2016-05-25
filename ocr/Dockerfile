@@ -23,6 +23,5 @@ COPY start.sh ${EXTRACTOR_HOME}/
 RUN chown clowder.nogroup ${EXTRACTOR_HOME}/start.sh
 RUN chmod 755 ${EXTRACTOR_HOME}/start.sh
 
-USER clowder
 WORKDIR ${EXTRACTOR_HOME}
 CMD ["./start.sh"]
