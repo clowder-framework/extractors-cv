@@ -22,7 +22,13 @@ rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost:5672/%2f")
 rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
-messageType = "*.file.image.#"
+messageType = "*.file.image.#", "extractors."+extractorName
 
 # trust certificates, set this to false for self signed certificates
 sslVerify=os.getenv('RABBITMQ_SSLVERIFY', False)
+
+# Instance of Clowder on which to register extractor
+clowderUrl = "http://localhost:9000"
+
+# key to register extractor at startup
+apiKey = ""
