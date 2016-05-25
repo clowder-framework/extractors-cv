@@ -21,15 +21,15 @@ OCR text extracted from the input associated with the original file.
 
 ## Build a docker image
 
-      `docker build -t clowder/ocr:0.1 .`
+      docker build -t clowder/ocr:0.1 .
 
 ## Test the docker container image:
 
-      `docker run --name=ocr1 -e 'RABBITMQ_URI="amqp://user1:password1@rabbitmq.ncsa.illinois.edu:5672/vhost1?heartbeat_interval=120"' -e 'RABBITMQ_EXCHANGE="exchange1"' -e 'TZ=/usr/share/zoneinfo/US/Central' clowder/ocr:0.1`
+      docker run --name=ocr1 -e 'RABBITMQ_URI="amqp://user1:password1@rabbitmq.ncsa.illinois.edu:5672/vhost1?heartbeat_interval=120"' -e 'RABBITMQ_EXCHANGE="exchange1"' -e 'TZ=/usr/share/zoneinfo/US/Central' clowder/ocr:0.1
 
 ## To view the log files (similar to "tail -f")
 
-      `docker logs -f ocr1`
+      docker logs -f ocr1
 
   Setting the timezone variable above is optional. It can help
   understand better the time shown in the log file. By default
