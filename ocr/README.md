@@ -18,6 +18,8 @@ An image file in a format supported by Tesseract.
 ## Output
 OCR text extracted from the input associated with the original file.
 
+## Sample input and output files
+A sample input file "browndog.png" and a sample output file "browndog.png.sample-output" are available in this directory.
 
 ## Build a docker image
 
