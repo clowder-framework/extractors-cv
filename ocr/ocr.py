@@ -64,13 +64,48 @@ def process_file(parameters):
     global extractorName
     
     inputfile=parameters['inputfile']
-    
-    ocrtext = ocr(inputfile, str(uuid.uuid4()))
-    mdata={}
-    mdata["extractor_id"]=extractorName
-    mdata["ocr_simple"]=[ocrtext]
 
-    extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
+    ocrtext = ocr(inputfile, str(uuid.uuid4())).strip()
+
+    # context url
+    context_url = 'https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld'
+
+    # store results as metadata
+    metadata = {
+        '@context': [context_url, 
+                     {'ocr_text': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#ocr_text'}],
+        'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
+        'agent': {'@type': 'cat:extractor',
+                  'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName},
+        'content': {'ocr_text': ocrtext}
+    }
+
+    # upload metadata
+    # extractors.upload_file_metadata(mdata=metadata, parameters=parameters)
+    upload_jsonld(metadata, parameters["fileid"], parameters['host'], parameters['secretKey'])
+
+    logger.info("Uploaded metadata %s", metadata)
+
+def upload_jsonld(metadata, fileid, host, key):
+    """Upload metadata to the jsonld endpoint"""
+
+    # status_update(channel=channel, header=header, fileid=fileid, status="Uploading file metadata.")
+
+    headers={'Content-Type': 'application/json'}
+
+    if(not host.endswith("/")):
+        host = host+"/"
+
+    url = host+'api/files/'+ fileid +'/metadata.jsonld?key=' + key
+
+    #print "Post ", url, " with body: ", metadata
+
+    try:
+        r = requests.post(url, headers=headers, data=json.dumps(metadata), verify=sslVerify)
+        r.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print e
+        sys.exit(1)
 
 def register_extractor(host, key):
     """Register extractor info with Clowder"""
