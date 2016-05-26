@@ -8,4 +8,4 @@ if [ "$RABBITMQ_URI" == "" ]; then
         RABBITMQ_URI="amqp://guest:guest@localhost:5672/%2F"
     fi
 fi
-exec python ocr.py
+exec ./ocr.py
