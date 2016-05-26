@@ -23,7 +23,7 @@ def main():
     logger = logging.getLogger('ocr')
     logger.setLevel(logging.DEBUG)
 
-    register_extractor(clowderUrl, apiKey)
+    register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
@@ -81,58 +81,22 @@ def process_file(parameters):
     }
 
     # upload metadata
-    # extractors.upload_file_metadata(mdata=metadata, parameters=parameters)
-    upload_jsonld(metadata, parameters["fileid"], parameters['host'], parameters['secretKey'])
+    extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
 
     logger.info("Uploaded metadata %s", metadata)
 
-def upload_jsonld(metadata, fileid, host, key):
-    """Upload metadata to the jsonld endpoint"""
-
-    # status_update(channel=channel, header=header, fileid=fileid, status="Uploading file metadata.")
-
-    headers={'Content-Type': 'application/json'}
-
-    if(not host.endswith("/")):
-        host = host+"/"
-
-    url = host+'api/files/'+ fileid +'/metadata.jsonld?key=' + key
-
-    #print "Post ", url, " with body: ", metadata
-
-    try:
-        r = requests.post(url, headers=headers, data=json.dumps(metadata), verify=sslVerify)
-        r.raise_for_status()
-    except requests.exceptions.RequestException as e:
-        print e
-        sys.exit(1)
-
-def register_extractor(host, key):
+def register_extractor(registrationEndpoints):
     """Register extractor info with Clowder"""
 
-    logger.info("Registering extractor using key " + key)
-
+    logger.info("Registering extractor...")
     headers = {'Content-Type': 'application/json'}
+    with open('extractor_info.json') as info_file:
+        info = json.load(info_file)
+        info["name"] = extractorName
+        for url in registrationEndpoints.split(','):
+            r = requests.post(url.strip(), headers=headers, data=json.dumps(info), verify=sslVerify)
+            print "Response: ", r.text
 
-    if not host.endswith("/"):
-        host += "/"
-
-    url = host+'api/extractors?key=' + key
-
-    info = {
-        "@context": "",
-        "name": extractorName,
-        "version": "1.0",
-        "description": "Simple OCR (Optical Character Recognition) extractor to extract text from an image",
-        "author": "Liana Diesendruck <ldiesend@illinois.edu>",
-        "contributors": ["Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
-        "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"},
-        "dependencies": ["tesseract"]
-    }
-
-    r = requests.post(url, headers=headers, data=json.dumps(info), verify=sslVerify)
-    print "Response: ", r.text
-    return r.raise_for_status()
 
 if __name__ == "__main__":
     main()

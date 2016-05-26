@@ -25,10 +25,7 @@ rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 messageType = "*.file.image.#", "extractors."+extractorName
 
 # trust certificates, set this to false for self signed certificates
-sslVerify=os.getenv('RABBITMQ_SSLVERIFY', False)
+sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
 
-# Instance of Clowder on which to register extractor
-clowderUrl = os.getenv('CLOWDER_URL', "http://localhost:9000")
-
-# key to register extractor at startup
-apiKey = os.getenv('API_KEY', "")
+# Endpoints and keys for registering extractor information in CSV format.
+registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=key1,http://host2:9000/api/extractors?key=key2")

@@ -1,0 +1,10 @@
+{
+    "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
+    "name": "ncsa.image.ocr",
+    "version": "1.0",
+    "description": "Simple OCR (Optical Character Recognition) extractor to extract text from an image",
+    "author": "Liana Diesendruck <ldiesend@illinois.edu>",
+    "contributors": ["Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
+    "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"},
+    "dependencies": ["tesseract"]
+}
