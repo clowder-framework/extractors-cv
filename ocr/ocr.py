@@ -23,7 +23,10 @@ def main():
     logger = logging.getLogger('ocr')
     logger.setLevel(logging.DEBUG)
 
-    register_extractor(registrationEndpoints)
+    try:
+        register_extractor(registrationEndpoints)
+    except Exception as e:
+        logger.warn('Error in registering extractor: ' + str(e))
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
