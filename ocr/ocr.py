@@ -69,6 +69,8 @@ def process_file(parameters):
     inputfile=parameters['inputfile']
 
     ocrtext = ocr(inputfile, str(uuid.uuid4())).strip()
+    if not ocrtext:
+        ocrtext = 'No text detected'
 
     # context url
     context_url = 'https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld'
