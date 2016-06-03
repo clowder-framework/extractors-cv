@@ -25,11 +25,11 @@ A sample input file "browndog.png" and a sample output file "browndog.png.sample
 One can pass in the git branch when building the docker image using
 the "GIT\_BRANCH" variable. Its default value is "master" if unspecified.
 
-      docker build -t clowder/ocr:latest .
+      docker build -t ncsa/clowder-ocr:latest .
 
 or
 
-      docker build --build-arg GIT_BRANCH=feature/BD-1079-update-OCR-extractor -t clowder/ocr:jsonld .
+      docker build --build-arg GIT_BRANCH=feature/BD-1079-update-OCR-extractor -t ncsa/clowder-ocr:jsonld .
 
 ## Test the docker container image:
 
