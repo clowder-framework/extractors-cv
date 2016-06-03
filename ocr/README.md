@@ -22,17 +22,23 @@ OCR text extracted from the input associated with the original file.
 A sample input file "browndog.png" and a sample output file "browndog.png.sample-output" are available in this directory.
 
 ## Build a docker image
+One can pass in the git branch when building the docker image using
+the "GIT\_BRANCH" variable. Its default value is "master" if unspecified.
 
-      docker build -t clowder/ocr:0.1 .
+      docker build -t clowder/ocr:latest .
+
+or
+
+      docker build --build-arg GIT_BRANCH=feature/BD-1079-update-OCR-extractor -t clowder/ocr:jsonld .
 
 ## Test the docker container image:
 
-      docker run --name=ocr1 -e 'RABBITMQ_URI="amqp://user1:password1@rabbitmq.ncsa.illinois.edu:5672/vhost1?heartbeat_interval=120"' -e 'RABBITMQ_EXCHANGE="exchange1"' -e 'TZ=/usr/share/zoneinfo/US/Central' clowder/ocr:0.1
+      docker run --name=ocr1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' ncsa/clowder-ocr:jsonld
 
 ## To view the log files (similar to "tail -f")
 
       docker logs -f ocr1
 
-  Setting the timezone variable above is optional. It can help
+  Setting the timezone variable (TZ) above is optional. It can help
   understand better the time shown in the log file. By default
   a container uses UTC.
