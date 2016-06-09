@@ -28,7 +28,10 @@ messageType = "*.file.image.#", "extractors."+extractorName
 sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
 
 # path to opencv pretrained classifiers
+# Location where brew installed on Mac OSX 64bit.
 face_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
+# Location in the "opencv-data" package on Ubuntu 14.04.
+# face_cascade_path = '/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml'
 
 # Endpoints and keys for registering extractor information in CSV format.
 registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=key1,http://host2:9000/api/extractors?key=key2")
