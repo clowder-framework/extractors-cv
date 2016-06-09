@@ -10,23 +10,25 @@
 #
 # =============================================================================
 
+import os
+
 # name to show in rabbitmq queue list
-extractorName = "ncsa.cv.faces"
+extractorName = os.getenv('RABBITMQ_QUEUE', "ncsa.cv.faces")
 
 # URL to be used for connecting to rabbitmq
-rabbitmqURL = None
+rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost:5672/%2f")
 
 # name of rabbitmq exchange
-rabbitmqExchange = "medici"
+rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
-messageType = "*.file.image.#"
+messageType = "*.file.image.#", "extractors."+extractorName
 
 # trust certificates, set this to false for self signed certificates
-sslVerify=False
+sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
 
 # path to opencv pretrained classifiers
 face_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
 
-
-
+# Endpoints and keys for registering extractor information in CSV format.
+registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=key1,http://host2:9000/api/extractors?key=key2")
