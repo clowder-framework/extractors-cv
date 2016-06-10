@@ -29,3 +29,31 @@ the image accordingly.
 ## Sample input and output files in this directory
 * face: sample input file: Amitabha.jpg, sample output file: Amitabha.jpg.sample-output.
 
+## Build a docker image
+One can pass in the git branch when building the docker image using
+the "GIT\_BRANCH" variable. Its default value is "master" if unspecified.
+
+      docker build -t ncsa/clowder-opencv-faces:latest .
+
+or
+
+      docker build --build-arg GIT_BRANCH=feature/BD-1092-update-opencv-faces-extractor -t ncsa/clowder-opencv-faces:jsonld .
+
+## Test the docker container image:
+
+      docker run --name=opencv-faces-1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' ncsa/clowder-opencv-faces:jsonld
+
+    Then upload files to Clowder to test the extractor. You might need
+    to upload multiple times for a file to go to this extractor
+    instance if there are multiple instances for the same queue.
+    Change the file, Clowder URL, key in the following to your values.
+
+      curl -F "File=@Amitabha.jpg" 'http://dts-dev.ncsa.illinois.edu:9000/api/extractions/upload_file?key=key1'
+
+## To view the log files (similar to "tail -f")
+
+      docker logs -f ocr1
+
+  Setting the timezone variable (TZ) above is optional. It can help
+  understand better the time shown in the log file. By default
+  a container uses UTC.
