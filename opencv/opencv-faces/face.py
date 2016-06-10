@@ -112,22 +112,23 @@ def process_file(parameters):
                 mdata["extractor_id"]=extractorName                
                 extractors.upload_file_tags(tags=mdata, parameters=parameters)
 
-            # context url
-            context_url = 'https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld'
+                # Add metadata only if at least one face was detected.
+                # context url
+                context_url = 'https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld'
 
-            # store results as metadata
-            metadata = {
-                '@context': [context_url, 
-                             {'faces': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#face_positions'}],
-                'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
-                'agent': {'@type': 'cat:extractor',
-                          'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName},
-                'content': {'faces': positions}
-            }
+                # store results as metadata
+                metadata = {
+                    '@context': [context_url, 
+                                 {'faces': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#face_positions'}],
+                    'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
+                    'agent': {'@type': 'cat:extractor',
+                              'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName},
+                    'content': {'faces': positions}
+                }
 
-            # upload metadata
-            extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
-            logger.info("Uploaded metadata %s", metadata)
+                # upload metadata
+                extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
+                logger.info("Uploaded metadata %s", metadata)
                 
     finally:
 
