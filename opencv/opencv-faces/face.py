@@ -94,7 +94,7 @@ def process_file(parameters):
                 pos_md['width']=str(w)
                 pos_md['height']=str(h)
                 positions.append(pos_md)
-                
+
                 #upload face as a section preview and associate metadata
                 extractors.upload_preview(previewfile=sectionfile, previewdata=imgdata, parameters=parameters)
                 
@@ -118,11 +118,11 @@ def process_file(parameters):
             # store results as metadata
             metadata = {
                 '@context': [context_url, 
-                             {'section_position': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#section_position'}],
+                             {'faces': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#face_positions'}],
                 'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
                 'agent': {'@type': 'cat:extractor',
                           'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName},
-                'content': {'face_positions': positions}
+                'content': {'faces': positions}
             }
 
             # upload metadata
