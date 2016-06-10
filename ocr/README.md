@@ -4,7 +4,7 @@ This extractor uses **Tesseract**, which needs to be installed in your system. I
 
 This extractor was tested on a 64-bit Mac OS using Python 2.7.5.
 
-To use this extractor you will need pymedici installed. You can either install it, or you can create a link to the pymedici repository. Assuming that the pymedici repository is cloned in the same folder as this repository you can execute the following code `ln -s $(cd "../../pyMedici/pymedici" && pwd -P) pymedici`.
+To use this extractor you will need pyclowder installed. You can either install it, or you can create a link to the pyclowder repository. Assuming that the pyclowder repository is cloned in the same folder as this repository you can execute the following code `ln -s $(cd "../../pyclowder/pyclowder" && pwd -P) pyclowder`.
 
 In config.py you will need to set the URL to point to rabbitmq (https://www.rabbitmq.com/uri-spec.html). For example to connect to rabbitmq running on the localhost with default parameters you can use the following URL: amqp://guest:guest@localhost:5672/%2f
  
