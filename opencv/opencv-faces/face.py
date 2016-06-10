@@ -119,7 +119,7 @@ def process_file(parameters):
                 # store results as metadata
                 metadata = {
                     '@context': [context_url, 
-                                 {'faces': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#face_positions'}],
+                                 {'faces': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#faces'}],
                     'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
                     'agent': {'@type': 'cat:extractor',
                               'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName},
