@@ -8,6 +8,22 @@ In config.py you will need to set the URL to point to rabbitmq (https://www.rabb
 
 Please, read the setup section carefully before proceeding.
 
+## Docker Build
+
+To build this docker container use
+
+```
+docker build -t ncsa/clowder-extractors-caltech101 .
+```
+
+This extractor assumes you will have mounted a completed matlab install at /matlab in the contiainer. You can install matlab on a ubuntu 64 bit machine and copy the resulting /usr/local/MATLAB/&lt;release&gt; folder.
+
+To run the extractor use:
+
+```
+docker run --link rabbitmq:rabbitmq --volume ${PWD}/matlab:/matlab ncsa/clowder-extractors-caltech101
+```
+
 ## Overview
 Use VLFeat to associate a category from the Caltech 101 benchmark with an image.
 

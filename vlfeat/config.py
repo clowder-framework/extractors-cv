@@ -10,20 +10,22 @@
 #
 # =============================================================================
 
+import os
+
 # name to show in rabbitmq queue list
-extractorName = "ncsa.cv.caltech101"
+extractorName = os.getenv('RABBITMQ_QUEUE', "ncsa.cv.caltech101")
 
 # URL to be used for connecting to rabbitmq
-rabbitmqURL = None
+rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost/%2f")
 
 # name of rabbitmq exchange
-rabbitmqExchange = "medici"
+rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
 messageType = "*.file.image.#"
 
-# matlab binary
-matlabBinary = '/usr/local/MATLAB/R2013a/bin/matlab'
-
 # trust certificates, set this to false for self signed certificates
-sslVerify=False
+sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
+
+# matlab binary
+matlabBinary = os.getenv('MATLAB_BINARY', 'matlab')

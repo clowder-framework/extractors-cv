@@ -6,7 +6,7 @@ import os
 import time
 import logging
 from config import *
-import pymedici.extractors as extractors
+import pyclowder.extractors as extractors
 
 def main():
     global extractorName, messageType, rabbitmqExchange, rabbitmqURL
@@ -16,7 +16,7 @@ def main():
 
     #set logging
     logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
-    logging.getLogger('pymedici.extractors').setLevel(logging.INFO)
+    logging.getLogger('pyclowder.extractors').setLevel(logging.INFO)
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
