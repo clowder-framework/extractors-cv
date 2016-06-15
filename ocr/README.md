@@ -36,12 +36,14 @@ Change the file, Clowder URL, key in the following to your values.
       curl -F "File=@browndog.png" 'http://dts-dev.ncsa.illinois.edu:9000/api/extractions/upload_file?key=key1'
 
 Then look at the logs in the container.
+
       docker logs -f ocr1
 
 One of the uploaded files will be given to the extractor container
 to process. Find a file id in the log, and open the following URL
 in a browser window to verify that the metadata added by the OCR 
 extractor is there. Again change the Clowder URL accordingly.
+
       http://dts-dev.ncsa.illinois.edu:9000/files/<file_id>
 
 ## To view the log files (similar to "tail -f")
