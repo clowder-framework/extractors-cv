@@ -28,25 +28,25 @@ A sample input file "browndog.png" and a sample output file "browndog.png.sample
 
       docker run --name=ocr1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' ncsa/clowder-ocr:jsonld
 
-    Then upload files to Clowder to test the extractor. You might need
-    to upload multiple times for a file to go to this extractor
-    instance if there are multiple instances for the same queue.
-    Change the file, Clowder URL, key in the following to your values.
+Then upload files to Clowder to test the extractor. You might need
+to upload multiple times for a file to go to this extractor
+instance if there are multiple instances for the same queue.
+Change the file, Clowder URL, key in the following to your values.
 
       curl -F "File=@browndog.png" 'http://dts-dev.ncsa.illinois.edu:9000/api/extractions/upload_file?key=key1'
 
-    Then look at the logs in the container.
+Then look at the logs in the container.
       docker logs -f ocr1
 
-    One of the uploaded files will be given to the extractor container
-    to process. Find a file id in the log, and open the following URL
-    in a browser window to verify that the metadata added by the OCR 
-    extractor is there. Again change the Clowder URL accordingly.
-
+One of the uploaded files will be given to the extractor container
+to process. Find a file id in the log, and open the following URL
+in a browser window to verify that the metadata added by the OCR 
+extractor is there. Again change the Clowder URL accordingly.
       http://dts-dev.ncsa.illinois.edu:9000/files/<file_id>
 
 ## To view the log files (similar to "tail -f")
 
+      docker logs -f ocr1
 
   Setting the timezone variable (TZ) above is optional. It can help
   understand better the time shown in the log file. By default
