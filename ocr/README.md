@@ -22,22 +22,31 @@ OCR text extracted from the input associated with the original file.
 A sample input file "browndog.png" and a sample output file "browndog.png.sample-output" are available in this directory.
 
 ## Build a docker image
-One can pass in the git branch when building the docker image using
-the "GIT\_BRANCH" variable. Its default value is "master" if unspecified.
-
-      docker build -t ncsa/clowder-ocr:latest .
-
-or
-
-      docker build --build-arg GIT_BRANCH=feature/BD-1079-update-OCR-extractor -t ncsa/clowder-ocr:jsonld .
+      docker build -t ncsa/clowder-ocr:jsonld .
 
 ## Test the docker container image:
 
       docker run --name=ocr1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' ncsa/clowder-ocr:jsonld
 
+    Then upload files to Clowder to test the extractor. You might need
+    to upload multiple times for a file to go to this extractor
+    instance if there are multiple instances for the same queue.
+    Change the file, Clowder URL, key in the following to your values.
+
+      curl -F "File=@browndog.png" 'http://dts-dev.ncsa.illinois.edu:9000/api/extractions/upload_file?key=key1'
+
+    Then look at the logs in the container.
+      docker logs -f ocr1
+
+    One of the uploaded files will be given to the extractor container
+    to process. Find a file id in the log, and open the following URL
+    in a browser window to verify that the metadata added by the OCR 
+    extractor is there. Again change the Clowder URL accordingly.
+
+      http://dts-dev.ncsa.illinois.edu:9000/files/<file_id>
+
 ## To view the log files (similar to "tail -f")
 
-      docker logs -f ocr1
 
   Setting the timezone variable (TZ) above is optional. It can help
   understand better the time shown in the log file. By default
