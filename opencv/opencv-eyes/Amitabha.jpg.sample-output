@@ -1,0 +1,18 @@
+
+- Metadata posted to Clowder:
+
+  {'content': {'eyes': [{'y': '81', 'x': '561', 'height': '93', 'section_id': u'5764461ae4b048e771d0bb06', 'width': '93'}]}, '@context': ['https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld', {'eyes': 'http://clowder.ncsa.illinois.edu/ncsa.cv.eyes#eyes'}], 'attachedTo': {'resourceType': 'file', 'id': u'5764461ae4b048e771d0bae6'}, 'agent': {'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.cv.eyes', '@type': 'cat:extractor'}}
+
+- Tags added to sections and file:
+  "Human Eyes Automatically Detected".
+
+- On Clowder file page:
+
+  Extracted by https://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.cv.eyes on Jun 17, 2016
+
+    eyes:
+            y: 81
+            x: 561
+            height: 93
+            section_id: 57643076e4b048e771d0b4d7
+            width: 93
