@@ -1,6 +1,5 @@
 #!/bin/bash
 
-cd $EXTRACTOR_HOME
 # If RabbitMQ URI is not set, use the default credentials; while doing so,
 # handle the linking scenario, where RABBITMQ_PORT_5672 is set.
 if [ "$RABBITMQ_URI" == "" ]; then
@@ -11,6 +10,5 @@ if [ "$RABBITMQ_URI" == "" ]; then
     fi
 fi
 
-git checkout $GIT_BRANCH
-
+cd $CLOWDER_HOME
 exec ./face.py

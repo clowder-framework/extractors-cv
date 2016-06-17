@@ -6,20 +6,9 @@
 FROM ncsa/clowder-extractors-python-base
 MAINTAINER Rui Liu <ruiliu@illinois.edu>
 
-# Defaults to the "master" branch if not given.
-ARG GIT_BRANCH=master
 ENV CLOWDER_HOME=/home/clowder \
-    EXTRACTOR_HOME=/home/clowder/extractors-cv/opencv/opencv-faces \
     RABBITMQ_URI="" \
     RABBITMQ_EXCHANGE=""
-
-# Get git source, fix the default paths.
-USER clowder
-RUN cd ${CLOWDER_HOME} && \
-    git clone https://opensource.ncsa.illinois.edu/stash/scm/cats/extractors-cv.git && \
-    cd extractors-cv && \
-    git checkout $GIT_BRANCH && \
-    sed -i -e "s#/usr/local/share/OpenCV#/usr/share/opencv#" ${EXTRACTOR_HOME}/config.py
 
 # Install the requied software.
 USER root
@@ -27,7 +16,10 @@ RUN apt-get update && \
     apt-get install -y python-opencv opencv-data
 
 # COPY does not honor the USER setting, so the owner is always root.
-COPY start.sh ${EXTRACTOR_HOME}/
+COPY start.sh face.py config.py extractor_info.json ${CLOWDER_HOME}/
 
-WORKDIR ${EXTRACTOR_HOME}
+# Fix the default paths.
+RUN sed -i -e "s#/usr/local/share/OpenCV#/usr/share/opencv#" ${CLOWDER_HOME}/config.py
+
+WORKDIR ${CLOWDER_HOME}
 ENTRYPOINT ["./start.sh"]

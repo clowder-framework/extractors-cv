@@ -30,14 +30,7 @@ the image accordingly.
 * face: sample input file: Amitabha.jpg, sample output file: Amitabha.jpg.sample-output.
 
 ## Build a docker image
-One can pass in the git branch when building the docker image using
-the "GIT\_BRANCH" variable. Its default value is "master" if unspecified.
-
-      docker build -t ncsa/clowder-opencv-faces:latest .
-
-or
-
-      docker build --build-arg GIT_BRANCH=feature/BD-1092-update-opencv-faces-extractor -t ncsa/clowder-opencv-faces:jsonld .
+      docker build -t ncsa/clowder-opencv-faces:jsonld .
 
 ## Test the docker container image:
 
@@ -52,7 +45,7 @@ or
 
 ## To view the log files (similar to "tail -f")
 
-      docker logs -f ocr1
+      docker logs -f opencv-faces-1
 
   Setting the timezone variable (TZ) above is optional. It can help
   understand better the time shown in the log file. By default
