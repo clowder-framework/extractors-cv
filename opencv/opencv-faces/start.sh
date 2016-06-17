@@ -11,4 +11,4 @@ if [ "$RABBITMQ_URI" == "" ]; then
 fi
 
 cd $CLOWDER_HOME
-exec ./face.py
+exec ./${MAIN_SCRIPT}
