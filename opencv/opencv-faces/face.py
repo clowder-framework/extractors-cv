@@ -1,16 +1,11 @@
 #!/usr/bin/env python
-import pika
+
 import sys
 import json
-import traceback
 import requests
 import tempfile
-import subprocess
 import os
-import itertools
-import numpy as np
 import cv2
-import time
 import logging
 from config import *
 import pyclowder.extractors as extractors
