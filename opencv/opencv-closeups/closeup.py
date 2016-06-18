@@ -1,26 +1,27 @@
 #!/usr/bin/env python
-import pika
-import sys
+
 import json
-import traceback
 import requests
 import tempfile
-import subprocess
 import os
-import itertools
-import numpy as np
 import cv2
 import logging
-import time
 from config import *
 import pyclowder.extractors as extractors
 
 def main():
-    global extractorName, messageType, rabbitmqExchange, rabbitmqURL    
+    global extractorName, messageType, rabbitmqExchange, rabbitmqURL, logger
 
     #set logging
     logging.basicConfig(format='%(asctime)-15s %(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
     logging.getLogger('pyclowder.extractors').setLevel(logging.DEBUG)
+    logger = logging.getLogger('closeups')
+    logger.setLevel(logging.DEBUG)
+
+    try:
+        register_extractor(registrationEndpoints)
+    except Exception as e:
+        logger.warn('Error in registering extractor: ' + str(e))
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
@@ -48,21 +49,26 @@ def process_file(parameters):
         midCloseUp=False
         fullCloseUp=False
 
+        closeupSet = set()
         faces=face_cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=2, minSize=(imgw/8, imgh/8), flags=cv2.cv.CV_HAAR_SCALE_IMAGE)
         for (x,y,w,h) in faces:
             if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
                 fullCloseUp=True
+                closeupSet.add((x,y,w,h))
         for (x,y,w,h) in faces: 
             if(w*h>=(imgw*imgh/8)): #this is a medium closeup
                 midCloseUp=True
+                closeupSet.add((x,y,w,h))
         
         profilefaces=profile_face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=10, minSize=(imgw/8, imgh/8))
         for (x,y,w,h) in profilefaces:
             if ((w*h>=(imgw*imgh/3)) or (w>=0.8*imgw and h>=0.5*imgh) or (w>=0.5*imgw and h>=0.8*imgh)): #this is a closeup
                 fullCloseUp=True
+                closeupSet.add((x,y,w,h))
         for (x,y,w,h) in profilefaces: 
             if(w*h>=(imgw*imgh/8)): #this is a medium closeup
                 midCloseUp=True
+                closeupSet.add((x,y,w,h))
 
         if fullCloseUp:
             mdata={}
@@ -75,6 +81,48 @@ def process_file(parameters):
             mdata["tags"]=["Mid Close Up Automatically Detected"]
             mdata["extractor_id"]=extractorName
             extractors.upload_file_tags(tags=mdata, parameters=parameters)
+
+        positions=[]
+        # Add metadata if at least one closeup was detected.
+        if len(closeupSet) >= 1:
+            for (x,y,w,h) in closeupSet:
+                pos_md={}
+                pos_md['x']=str(x)
+                pos_md['y']=str(y)
+                pos_md['width']=str(w)
+                pos_md['height']=str(h)
+                positions.append(pos_md)
+
+            # context url
+            context_url = 'https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld'
+
+            # store results as metadata
+            metadata = {
+                '@context': [context_url, 
+                             {'closeups': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#closeups'}],
+                'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
+                'agent': {'@type': 'cat:extractor',
+                          'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName},
+                'content': {'closeups': positions}
+            }
+
+            # upload metadata
+            extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
+            logger.info("Uploaded metadata %s", metadata)
+
+
+def register_extractor(registrationEndpoints):
+    """Register extractor info with Clowder"""
+
+
+    logger.info("Registering extractor...")
+    headers = {'Content-Type': 'application/json'}
+    with open('extractor_info.json') as info_file:
+        info = json.load(info_file)
+        info["name"] = extractorName
+        for url in registrationEndpoints.split(','):
+            r = requests.post(url.strip(), headers=headers, data=json.dumps(info), verify=sslVerify)
+            print "Response: ", r.text
 
 
 if __name__ == "__main__":
