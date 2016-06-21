@@ -28,14 +28,14 @@ messageType = "*.file.image.#", "extractors."+extractorName
 sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
 
 # path to opencv pretrained classifiers
-# Location where brew installed on Mac OSX 64bit.
-face_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
-# Location in the "opencv-data" package on Ubuntu 14.04.
-# face_cascade_path = '/usr/share/opencv/haarcascades/haarcascade_frontalface_alt.xml'
-big_eyepair_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_big.xml'
-small_eyepair_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_mcs_eyepair_small.xml'
-left_eye_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_lefteye_2splits.xml'
-right_eye_cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_righteye_2splits.xml'
+# Default to Ubuntu 14.04 location: "/usr/share/opencv".
+# On Mac OSX, brew installs to "/usr/local/share/OpenCV".
+opencv_path = os.getenv('OPENCV_PATH', "/usr/share/opencv")
+face_cascade_path = opencv_path + '/haarcascades/haarcascade_frontalface_alt.xml'
+big_eyepair_cascade_path = opencv_path + '/haarcascades/haarcascade_mcs_eyepair_big.xml'
+small_eyepair_cascade_path = opencv_path + '/haarcascades/haarcascade_mcs_eyepair_small.xml'
+left_eye_cascade_path = opencv_path + '/haarcascades/haarcascade_lefteye_2splits.xml'
+right_eye_cascade_path = opencv_path + '/haarcascades/haarcascade_righteye_2splits.xml'
 
 # Endpoints and keys for registering extractor information in CSV format.
 registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=key1,http://host2:9000/api/extractors?key=key2")
