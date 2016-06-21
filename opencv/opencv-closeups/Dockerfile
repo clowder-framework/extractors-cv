@@ -18,8 +18,5 @@ RUN apt-get update && \
 # COPY does not honor the USER setting, so the owner is always root.
 COPY start.sh ${MAIN_SCRIPT} config.py extractor_info.json ${CLOWDER_HOME}/
 
-# Fix the default paths.
-RUN sed -i -e "s#/usr/local/share/OpenCV#/usr/share/opencv#" ${CLOWDER_HOME}/config.py
-
 WORKDIR ${CLOWDER_HOME}
 ENTRYPOINT ["./start.sh"]
