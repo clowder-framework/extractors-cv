@@ -20,10 +20,8 @@ def main():
     logger = logging.getLogger('face')
     logger.setLevel(logging.DEBUG)
 
-    try:
-        register_extractor(registrationEndpoints)
-    except Exception as e:
-        logger.warn('Error in registering extractor: ' + str(e))
+    extractors.setup(extractorName, messageType, rabbitmqExchange, rabbitmqURL, sslVerify)
+    extractors.register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
@@ -130,18 +128,6 @@ def process_file(parameters):
         if sectionfile is not None and os.path.isfile(sectionfile):     
             os.remove(sectionfile)  
 
-
-def register_extractor(registrationEndpoints):
-    """Register extractor info with Clowder"""
-
-    logger.info("Registering extractor...")
-    headers = {'Content-Type': 'application/json'}
-    with open('extractor_info.json') as info_file:
-        info = json.load(info_file)
-        info["name"] = extractorName
-        for url in registrationEndpoints.split(','):
-            r = requests.post(url.strip(), headers=headers, data=json.dumps(info), verify=sslVerify)
-            print "Response: ", r.text
 
 if __name__ == "__main__":
     main()
