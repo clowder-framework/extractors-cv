@@ -11,7 +11,7 @@
 #DEBUG=echo
 
 # make sure PROJECT ends with /
-PROJECT=${PROJECT:-"ncsa"}
+PROJECT=${PROJECT:-"clowder/"}
 if [ ! "${PROJECT}" = "" -a ! "$( echo $PROJECT | tail -c 2)" = "/" ]; then
   PROJECT="${PROJECT}/"
 fi
@@ -82,7 +82,12 @@ create() {
 }
 
 # Create the docker containers
-create "vlfeat" "clowder-extractors-caltech101"
+create "ocr"    "extractors-ocr"
+create "opencv/opencv-closeups" "extractors-closeups"
+create "opencv/opencv-eyes" "extractors-opencv-eyes"
+create "opencv/opencv-faces" "extractors-opencv-faces"
+create "opencv/opencv-profiles" "extractors-opencv-profiles"
+create "vlfeat" "extractors-caltech101"
 
 # remove latest tags
 for r in $LATEST; do
