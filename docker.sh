@@ -95,12 +95,12 @@ create() {
 }
 
 # Create the docker containers
-create "ocr"                     "extractors-ocr"
-create "opencv/opencv-closeups"  "extractors-closeups"
-create "opencv/opencv-eyes"      "extractors-opencv-eyes"
-create "opencv/opencv-faces"     "extractors-opencv-faces"
-create "opencv/opencv-profiles"  "extractors-opencv-profiles"
-create "vlfeat"                  "extractors-caltech101"
+create "extractors-tesseract"                          "extractors-tesseract"
+create "extractors-opencv/extractors-opencv-closeups"  "extractors-opencv-closeups"
+create "extractors-opencv/extractors-opencv-eyes"      "extractors-opencv-eyes"
+create "extractors-opencv/extractors-opencv-faces"     "extractors-opencv-faces"
+create "extractors-opencv/extractors-opencv-profiles"  "extractors-opencv-profiles"
+create "extractors-vlfeat"                             "extractors-vlfeat"
 
 # remove latest tags
 for r in $LATEST; do

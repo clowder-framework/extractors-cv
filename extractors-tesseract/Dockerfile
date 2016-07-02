@@ -9,14 +9,15 @@ MAINTAINER Rui Liu <ruiliu@illinois.edu>
 # Defaults to the "master" branch if not given.
 ENV CLOWDER_HOME=/home/clowder \
     RABBITMQ_URI="" \
-    RABBITMQ_EXCHANGE=""
+    RABBITMQ_EXCHANGE="clowder" \
+    MAIN_SCRIPT="ocr.py"
 
 USER root
 RUN apt-get update && \
     apt-get install -y tesseract-ocr
 
 # COPY does not honor the USER setting, so the owner is always root.
-COPY start.sh ocr.py config.py extractor_info.json ${CLOWDER_HOME}/
+COPY *.sh ocr.py config.py extractor_info.json ${CLOWDER_HOME}/
 
-WORKDIR ${CLOWDER_HOME}
-ENTRYPOINT ["./start.sh"]
+ENTRYPOINT ["/home/clowder/entrypoint.sh"]
+CMD ["extractor"]

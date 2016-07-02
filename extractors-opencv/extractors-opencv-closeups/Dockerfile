@@ -7,8 +7,8 @@ MAINTAINER Rui Liu <ruiliu@illinois.edu>
 
 ENV CLOWDER_HOME=/home/clowder \
     RABBITMQ_URI="" \
-    RABBITMQ_EXCHANGE="" \
-    MAIN_SCRIPT="profile.py"
+    RABBITMQ_EXCHANGE="clowder" \
+    MAIN_SCRIPT="closeup.py"
 
 # Install the requied software.
 USER root
@@ -16,7 +16,7 @@ RUN apt-get update && \
     apt-get install -y python-opencv opencv-data
 
 # COPY does not honor the USER setting, so the owner is always root.
-COPY start.sh ${MAIN_SCRIPT} config.py extractor_info.json ${CLOWDER_HOME}/
+COPY *.sh ${MAIN_SCRIPT} config.py extractor_info.json ${CLOWDER_HOME}/
 
-WORKDIR ${CLOWDER_HOME}
-ENTRYPOINT ["./start.sh"]
+ENTRYPOINT ["/home/clowder/entrypoint.sh"]
+CMD ["extractor"]
