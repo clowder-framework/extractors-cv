@@ -22,10 +22,13 @@ rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost/%2f")
 rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
-messageType = "*.file.image.#"
+messageType = "*.file.image.#", "extractors."+extractorName
 
 # trust certificates, set this to false for self signed certificates
 sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
 
 # matlab binary
 matlabBinary = os.getenv('MATLAB_BINARY', 'matlab')
+
+# Comma delimited list of endpoints and keys for registering extractor information
+registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=r1ek3rs")

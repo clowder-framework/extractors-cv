@@ -5,11 +5,12 @@ import subprocess
 import os
 import time
 import logging
+import json
 from config import *
 import pyclowder.extractors as extractors
 
 def main():
-    global extractorName, messageType, rabbitmqExchange, rabbitmqURL
+    global extractorName, messageType, rabbitmqExchange, rabbitmqURL, logger
     global matlab_process
 
     matlab_process = None
@@ -17,10 +18,18 @@ def main():
     #set logging
     logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
     logging.getLogger('pyclowder.extractors').setLevel(logging.INFO)
+    logger = logging.getLogger('extractor')
+    logger.setLevel(logging.DEBUG)
+
+    register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
-    extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
-        rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL)
+    extractors.connect_message_bus(extractorName=extractorName, 
+                                   messageType=messageType, 
+                                   processFileFunction=process_file, 
+                                   rabbitmqExchange=rabbitmqExchange, 
+                                   rabbitmqURL=rabbitmqURL,
+                                   checkMessageFunction=None)
 
     # kill matlab
     if matlab_process and not matlab_process.poll():
@@ -42,12 +51,25 @@ def process_file(parameters):
         score = f.readline().strip('\n')
         f.close()
 
-        mdata={}
-        mdata["extractor_id"]=extractorName
-        mdata["basic_caltech101_category"]=[category]
-        mdata["basic_caltech101_score"]=[score]
+        # context url
+        context_url = 'https://clowder.ncsa.illinois.edu/contexts/metadata.jsonld'
 
-        extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
+        # store results as metadata
+        metadata = {
+                '@context': [context_url, 
+                    {'basic_caltech101_category': 'http://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.dbpedia#basic_caltech101_category',
+                     'basic_caltech101_score': 'http://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.dbpedia#basic_caltech101_score'}
+                ],
+                'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
+                'agent': {
+                    '@type': 'cat:extractor',
+                    'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.cv.caltech101'
+                },
+                'content': {'basic_caltech101_category': category,
+                            'basic_caltech101_score': score}
+                }
+
+        extractors.upload_file_metadata(mdata=metadata, parameters=parameters)
 
     finally:
         if os.path.isfile(tmpfile):
@@ -60,7 +82,7 @@ def run_classify(inputfile, outputfile):
     if not matlab_process or matlab_process.poll():
         folder = os.path.dirname(os.path.realpath(__file__))
         args = [matlabBinary, '-nodisplay', '-nosplash']
-        matlab_process = subprocess.Popen(args, stdin=subprocess.PIPE)
+        matlab_process = subprocess.Popen(args, stdin=subprocess.PIPE, shell=True)
         matlab_process.stdin.write("cd '" + folder + "';\n")
         matlab_process.stdin.write("run('./vlfeat/toolbox/vl_setup');\n")
         matlab_process.stdin.write("cd('./vlfeat/apps/');\n")
@@ -76,6 +98,25 @@ def run_classify(inputfile, outputfile):
 
     while not os.path.isfile(outputfile) and not matlab_process.poll():
         time.sleep(0.1)
+
+
+def register_extractor(registrationEndpoints):
+    """Register extractor info with Clowder"""
+
+    logger.info("Registering extractor...")
+    headers = {'Content-Type': 'application/json'}
+    try:
+        with open('extractor_info.json') as info_file:
+            info = json.load(info_file)
+            # This makes it consistent: we only need to change the name at one place: config.py.
+            info["name"] = extractorName
+            for url in registrationEndpoints.split(','):
+                # Trim the URL in case there are spaces in the config.py string.
+                r = requests.post(url.strip(), headers=headers, data=json.dumps(info), verify=sslVerify)
+                logger.debug("Registering extractor with " +  url + " : " + r.text)
+    except Exception as e:
+        logger.error('Error in registering extractor: ' + str(e))
+
 
 if __name__ == "__main__":
     main()

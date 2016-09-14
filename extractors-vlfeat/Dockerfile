@@ -30,7 +30,7 @@ RUN apt-get -qq -y update && apt-get -y install \
 USER clowder
 
 # create vlfeat
-COPY entrypoint.sh *.py /home/clowder/
+COPY entrypoint.sh *.py *.json /home/clowder/
 RUN wget -q -O /tmp/vlfeat-0.9.20-bin.tar.gz http://www.vlfeat.org/download/vlfeat-0.9.20-bin.tar.gz \
     && tar xf /tmp/vlfeat-0.9.20-bin.tar.gz -C /tmp \
     && mv /tmp/vlfeat-0.9.20 /home/clowder/vlfeat
