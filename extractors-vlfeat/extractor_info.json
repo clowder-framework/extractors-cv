@@ -3,8 +3,9 @@
     "name": "ncsa.cv.caltech101",
     "version": "1.0",
     "description": "Caltech 101 benchmark extractor",
-    "author": "Rob Kooper <kooper@illinois.edu>",
-    "contributors": ["Rob Kooper <kooper@illinois.edu>"],
+    "author": "Liana Diesendruck <ldiesend@illinois.edu>",
+    "contributors": ["Rob Kooper <kooper@illinois.edu>, Yan Zhao <yanzhao3@illinois.edu"],
     "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"},
-    "dependencies": ["VLFeat", "Matlab"]
+    "dependencies": ["VLFeat", "Matlab"],
+    "bibtex": ["misc{vedaldi08vlfeat, Author = {A. Vedaldi and B. Fulkerson}, Title = {{VLFeat}: An Open and Portable Library of Computer Vision Algorithms}, Year  = {2008}"]
 }

@@ -22,7 +22,7 @@ rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost/%2f")
 rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
-messageType = "*.file.image.#", "extractors."+extractorName
+messageType = ["*.file.image.#", "extractors."+extractorName]
 
 # trust certificates, set this to false for self signed certificates
 sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
