@@ -20,7 +20,7 @@ from georef import *
 from anisodiff import *
 
 from config import *
-import pymedici.extractors as extractors
+import pyclowder.extractors as extractors
 
 
 
@@ -31,6 +31,9 @@ def main():
     #set logging
     logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
     logging.getLogger('pymedici.extractors').setLevel(logging.INFO)
+
+    extractors.setup(extractorName=extractorName, messageType=messageType, rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL, sslVerify=sslVerify)
+    extractors.register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 

@@ -11,19 +11,22 @@
 # =============================================================================
 
 # name to show in rabbitmq queue list
-extractorName = "ncsa.cv.river"
+extractorName = os.getenv('RABBITMQ_QUEUE', "ncsa.cv.river")
 
 # URL to be used for connecting to rabbitmq
-rabbitmqURL = None
+rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost/%2f")
 
 # name of rabbitmq exchange
-rabbitmqExchange = "medici"
+rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
 messageType = ["*.file.image.tiff","*.file.image.tif"] 
 
 # trust certificates, set this to false for self signed certificates
-sslVerify=False
+sslVerify=os.getenv('RABBITMQ_SSLVERIFY', False)
+
+# Endpoints and keys for registering extractor information in CSV format.
+registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=key1,http://host2:9000/api/extractors?key=key2")
 
 
 
