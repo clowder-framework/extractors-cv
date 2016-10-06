@@ -309,16 +309,55 @@ def process_file(parameters):
         #mdata["generated_dataset"] = host + 'datasets/'+datasetid
         extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
 
-        #build metadata for derived file and dataset
-        mdata = {}
-        mdata['generated_from'] = extractors.get_file_URL(fileid, parameters)
-        mdata['extractor_id'] = extractorName
+        #build metadata for derived dataset
+        derived_dataset_metadata = \
+        {
+            '@context': [
+                context_url, {
+                    'generated_from': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#generated_from',
+                }
+            ],
+            'attachedTo': {
+                'resourceType': 'dataset', 'id': datasetid
+            },
+            'agent': {
+                '@type': 'cat:extractor',
+                'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName
+            },
+            'content': {
+                'generated_from': extractors.get_file_URL(fileid, parameters)
+            }
+        }
+        
+        #build metadata for derived file
+        derived_file_metadata = \
+        {
+            '@context': [
+                context_url, {
+                    'generated_from': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#generated_from',
+                }
+            ],
+            'attachedTo': {
+                'resourceType': 'file', 'id': new_fid
+            },
+            'agent': {
+                '@type': 'cat:extractor',
+                'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName
+            },
+            'content': {
+                'generated_from': extractors.get_file_URL(fileid, parameters)
+            }
+        }
+
+        #mdata = {}
+        #mdata['generated_from'] = extractors.get_file_URL(fileid, parameters)
+        #mdata['extractor_id'] = extractorName
 
         #add metadata to derived dataset        
-        upload_dataset_metadata(datasetid, mdata, host, key)
+        upload_derived_dataset_metadata_jsonld(datasetid, derived_dataset_metadata, host, key)
         
         #add metadata to derived file        
-        upload_file_metadata(new_fid, mdata, host, key)   
+        upload_derived_file_metadata_jsonld(new_fid, derived_dataset_metadata, host, key)   
 
     finally:    
         print "deleting files on tmp dir: ", base_dir_name
@@ -332,22 +371,23 @@ def process_file(parameters):
 
 
 
-def upload_dataset_metadata(datasetid, mdata, host, key):
+def upload_derived_dataset_metadata_jsonld(datasetid, mdata, host, key):
 
     headers = {'Content-Type': 'application/json'}
     if(not host.endswith("/")):
         host = host+"/"
-    url = host+'api/datasets/'+ datasetid +'/metadata?key=' + key
+    url = host+'api/datasets/'+ datasetid +'/metadata.jsonld?key=' + key    
+    #url = host+'api/datasets/'+ datasetid +'/metadata?key=' + key
     r = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
     r.raise_for_status()
 
 
-def upload_file_metadata(fileid, mdata, host, key):
+def upload_derived_file_metadata_jsonld(fileid, mdata, host, key):
     global sslVerify
 
     headers={'Content-Type': 'application/json'}
 
-    url=host+'api/files/'+ fileid +'/metadata?key=' + key
+    url=host+'api/files/'+ fileid +'/metadata.jsonld?key=' + key
     
     r = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
     r.raise_for_status()
