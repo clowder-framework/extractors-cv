@@ -31,8 +31,11 @@ def main():
     #set logging
     logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
     logging.getLogger('pymedici.extractors').setLevel(logging.INFO)
-
+    
+    #set up
     extractors.setup(extractorName=extractorName, messageType=messageType, rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL, sslVerify=sslVerify)
+    
+    #registration
     extractors.register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
