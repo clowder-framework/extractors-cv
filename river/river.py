@@ -277,12 +277,37 @@ def process_file(parameters):
         new_fid=upload_file_to_dataset(final_file, datasetid, host, key)
         generated_file_url=extractors.get_file_URL(fileid=new_fid, parameters=parameters)
 
+        # Context url
+        context_url = 'https://clowder.ncsa.illinois.edu/contexts/metadata.jsonld'
+
+        # Store results as metadata
+        metadata = \
+        {
+            '@context': [
+                context_url, {
+                    'generated_file': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#generated_file',
+                    'generated_dataset': 'http://clowder.ncsa.illinois.edu/' + extractorName + '#generated_dataset'
+                }
+            ],
+            'attachedTo': {
+                'resourceType': 'file', 'id': parameters["fileid"]
+            },
+            'agent': {
+                '@type': 'cat:extractor',
+                'extractor_id': 'https://clowder.ncsa.illinois.edu/clowder/api/extractors/' + extractorName
+            },
+            'content': {
+                'generated_file': generated_file_url,
+                'generated_dataset': host + 'datasets/'+datasetid
+            }
+        }
+
         #add metadata to original file
-        mdata = {}
-        mdata["extractor_id"]=extractorName
-        mdata["generated_file"]=generated_file_url
-        mdata["generated_dataset"] = host + 'datasets/'+datasetid
-        extractors.upload_file_metadata(mdata=mdata, parameters=parameters)
+        #mdata = {}
+        #mdata["extractor_id"]=extractorName
+        #mdata["generated_file"]=generated_file_url
+        #mdata["generated_dataset"] = host + 'datasets/'+datasetid
+        extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
 
         #build metadata for derived file and dataset
         mdata = {}
