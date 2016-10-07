@@ -5,6 +5,9 @@
     "description": "Extracts river from digitized historic maps",
     "author": "Liana Diesendruck <ldiesend@illinois.edu>",
     "contributors": ["Jong Lee <jonglee1@illinois.edu>", "Smruti Padhy <spadhy@illinois.edu>"],
+    "contexts": [],
     "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"},
-    "dependencies": ["OpenCV", "Imagemagick", "GDAL"]
+    "external_services":[],
+    "dependencies": ["OpenCV", "Imagemagick", "GDAL"],
+    "bibtex": []
 }
