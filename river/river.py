@@ -22,25 +22,23 @@ from anisodiff import *
 from config import *
 import pyclowder.extractors as extractors
 
-
-
-
 def main():
     global extractorName, messageType, rabbitmqExchange, rabbitmqURL    
 
     #set logging
-    logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
-    logging.getLogger('pymedici.extractors').setLevel(logging.INFO)
+    logging.basicConfig(format='%(asctime)-15s %(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
+    logging.getLogger('pyclowder.extractors').setLevel(logging.DEBUG)
+    logger = logging.getLogger('river')
+    logger.setLevel(logging.DEBUG)
     
     #set up
     extractors.setup(extractorName=extractorName, messageType=messageType, rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL, sslVerify=sslVerify)
     
     #registration
     extractors.register_extractor(registrationEndpoints)
-
+    
     #connect to rabbitmq
-    extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, 
-        rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL)
+    extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_file, rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL)
 
 
 
@@ -66,6 +64,7 @@ def process_file(parameters):
     fileid = parameters['fileid']
     host = parameters['host'] 
     key = parameters['secretKey']
+    print key
     if(not host.endswith("/")):
         host = host+"/"
 
@@ -303,10 +302,6 @@ def process_file(parameters):
         }
 
         #add metadata to original file
-        #mdata = {}
-        #mdata["extractor_id"]=extractorName
-        #mdata["generated_file"]=generated_file_url
-        #mdata["generated_dataset"] = host + 'datasets/'+datasetid
         extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
 
         #build metadata for derived dataset
@@ -349,10 +344,6 @@ def process_file(parameters):
             }
         }
 
-        #mdata = {}
-        #mdata['generated_from'] = extractors.get_file_URL(fileid, parameters)
-        #mdata['extractor_id'] = extractorName
-
         #add metadata to derived dataset        
         upload_derived_dataset_metadata_jsonld(datasetid, derived_dataset_metadata, host, key)
         
@@ -377,7 +368,6 @@ def upload_derived_dataset_metadata_jsonld(datasetid, mdata, host, key):
     if(not host.endswith("/")):
         host = host+"/"
     url = host+'api/datasets/'+ datasetid +'/metadata.jsonld?key=' + key    
-    #url = host+'api/datasets/'+ datasetid +'/metadata?key=' + key
     r = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
     r.raise_for_status()
 
@@ -388,7 +378,6 @@ def upload_derived_file_metadata_jsonld(fileid, mdata, host, key):
     headers={'Content-Type': 'application/json'}
 
     url=host+'api/files/'+ fileid +'/metadata.jsonld?key=' + key
-    
     r = requests.post(url, headers=headers, data=json.dumps(mdata), verify=sslVerify)
     r.raise_for_status()
 
@@ -398,13 +387,12 @@ def upload_file_to_dataset(filepath, datasetid, host, key):
     if(not host.endswith("/")):
         host = host+"/"    
     # print datasetid 
-    url = host+'api/uploadToDataset/'+datasetid+'?key=' + key
-    # print "url:"+url
-    
+    url = host+'api/uploadToDataset/'+ datasetid + '?key=' + key
     f = open(filepath,'rb')
-    r = requests.post(url, files={"File":f}, verify=sslVerify)
+    r = requests.post(url,files={"File":f}, verify=sslVerify)
     r.raise_for_status()
     uploadedfileid = r.json()['id']
+    
     return uploadedfileid
 
 def create_empty_dataset(dataset_description, host, key):
@@ -420,6 +408,7 @@ def create_empty_dataset(dataset_description, host, key):
     r.raise_for_status()
     datasetid = r.json()['id']
     # print 'created an empty dataset : '+ str(datasetid)
+
     return datasetid
 
 
