@@ -1,0 +1,23 @@
+# clowder server
+clowder:
+  image: ncsa/clowder:develop
+  environment:
+    RABBITMQ_URI: "amqp://guest:guest@rabbitmq:5672/%2f"
+  ports:
+    - "9000:9000"
+  links:
+    - mongo
+    - rabbitmq
+
+# mongo database used to store metadata/data
+mongo:
+  image: mongo:latest
+  ports:
+    - "27017:27017"
+
+# rabbitmq to connect to extractors
+rabbitmq:
+  image: rabbitmq:management
+  ports:
+    - "5672:5672"
+    - "15672:15672"

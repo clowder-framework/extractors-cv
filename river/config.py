@@ -9,6 +9,7 @@
 # software applications are valid in your system.
 #
 # =============================================================================
+import os
 
 # name to show in rabbitmq queue list
 extractorName = os.getenv('RABBITMQ_QUEUE', "ncsa.cv.river")
