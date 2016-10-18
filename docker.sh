@@ -101,6 +101,7 @@ create "extractors-opencv/extractors-opencv-eyes"      "extractors-opencv-eyes"
 create "extractors-opencv/extractors-opencv-faces"     "extractors-opencv-faces"
 create "extractors-opencv/extractors-opencv-profiles"  "extractors-opencv-profiles"
 create "extractors-vlfeat"                             "extractors-vlfeat"
+create "extractors-river"                              "extractors-river"
 
 # remove latest tags
 for r in $LATEST; do
