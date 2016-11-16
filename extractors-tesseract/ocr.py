@@ -73,7 +73,7 @@ def process_file(parameters):
         ocrtext = 'No text detected'
 
     # context url
-    context_url = 'https://clowder.ncsa.illinois.edu/clowder/contexts/metadata.jsonld'
+    context_url = 'https://clowder.ncsa.illinois.edu/contexts/metadata.jsonld'
 
     # store results as metadata
     metadata = {
