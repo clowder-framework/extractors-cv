@@ -5,6 +5,16 @@
     "description": "Simple OCR (Optical Character Recognition) extractor to extract text from an image",
     "author": "Liana Diesendruck <ldiesend@illinois.edu>",
     "contributors": ["Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
-    "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"},
+    "contexts": [],
+    "repository": [
+        {
+            "repType": "git",
+            "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"
+        },
+        {
+            "repType": "docker",
+            "repUrl": "clowder/extractors-ocr"
+        }
+    ],
     "dependencies": ["tesseract"]
 }
