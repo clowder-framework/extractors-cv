@@ -2,7 +2,7 @@
 # Version: 1.0
 
 # FROM clowder/python-base
-FROM ncsa/clowder-extractors-python-base
+FROM clowder/pyclowder:1
 MAINTAINER Smruti Padhy <spadhy@illinois.edu>
 
 # Setup environment variables. These are passed into the container. You can change

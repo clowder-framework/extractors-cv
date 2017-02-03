@@ -3,7 +3,7 @@
 # Version: 0.1
 
 # FROM clowder/python-base
-FROM ncsa/clowder-extractors-python-base
+FROM clowder/pyclowder:1
 MAINTAINER Rui Liu <ruiliu@illinois.edu>
 
 # Defaults to the "master" branch if not given.
