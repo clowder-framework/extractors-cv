@@ -13,7 +13,7 @@ Please, read the setup section carefully before proceeding.
 To build this docker container use
 
 ```
-docker build -t ncsa/clowder-extractors-caltech101 .
+docker build -t clowder/extractors-caltech101 .
 ```
 
 This extractor assumes you will have mounted a completed matlab install at /matlab in the contiainer. You can install matlab on a ubuntu 64 bit machine and copy the resulting /usr/local/MATLAB/&lt;release&gt; folder.
@@ -21,7 +21,7 @@ This extractor assumes you will have mounted a completed matlab install at /matl
 To run the extractor use:
 
 ```
-docker run --link rabbitmq:rabbitmq --volume ${PWD}/matlab:/matlab ncsa/clowder-extractors-caltech101
+docker run --link rabbitmq:rabbitmq --volume ${PWD}/matlab:/matlab clowder/extractors-caltech101
 ```
 
 ## Overview

@@ -30,11 +30,11 @@ the image accordingly.
 * face: sample input file: Amitabha.jpg, sample output file: Amitabha.jpg.sample-output.
 
 ## Build a docker image
-      docker build -t ncsa/clowder-opencv-faces:jsonld .
+      docker build -t clowder/opencv-faces:jsonld .
 
 ## Test the docker container image:
 
-      docker run --name=opencv-faces-1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' ncsa/clowder-opencv-faces:jsonld
+      docker run --name=opencv-faces-1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' clowder/opencv-faces:jsonld
 
     Then upload files to Clowder to test the extractor. You might need
     to upload multiple times for a file to go to this extractor

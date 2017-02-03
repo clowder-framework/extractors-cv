@@ -1,6 +1,6 @@
 # clowder server
 clowder:
-  image: ncsa/clowder:latest
+  image: clowder/clowder:latest
 #  environment:
 #    CLOWDER_ADMIN: "joe@aol.com"
 #    TOOLMANAGER_URI: "http://192.168.99.100:8080"
@@ -13,7 +13,7 @@ clowder:
 
 # extractors
 caltech101:
-  image: ncsa/clowder-extractors-caltech101
+  image: clowder/extractors-caltech101
   links:
     - rabbitmq
   volumes:

@@ -22,11 +22,11 @@ OCR text extracted from the input associated with the original file.
 A sample input file "browndog.png" and a sample output file "browndog.png.sample-output" are available in this directory.
 
 ## Build a docker image
-      docker build -t ncsa/clowder-ocr:jsonld .
+      docker build -t clowder/ocr:jsonld .
 
 ## Test the docker container image:
 
-      docker run --name=ocr1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' ncsa/clowder-ocr:jsonld
+      docker run --name=ocr1 -d --restart=always -e 'RABBITMQ_URI=amqp://user1:pass1@rabbitmq.ncsa.illinois.edu:5672/clowder-dev' -e 'RABBITMQ_EXCHANGE=clowder' -e 'TZ=/usr/share/zoneinfo/US/Central' -e 'REGISTRATION_ENDPOINTS=http://dts-dev.ncsa.illinois.edu:9000/api/extractors?key=key1' clowder/ocr:jsonld
 
 Then upload files to Clowder to test the extractor. You might need
 to upload multiple times for a file to go to this extractor

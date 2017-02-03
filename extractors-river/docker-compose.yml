@@ -1,6 +1,6 @@
 # clowder server
 clowder:
-  image: ncsa/clowder:develop
+  image: clowder/clowder:develop
   environment:
     RABBITMQ_URI: "amqp://guest:guest@rabbitmq:5672/%2f"
   ports:
