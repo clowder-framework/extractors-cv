@@ -2,7 +2,7 @@
 #
 # Version: 1.0
 
-FROM ncsa/clowder-extractors-python-base
+FROM clowder/pyclowder:1
 MAINTAINER Rui Liu <ruiliu@illinois.edu>
 
 ENV CLOWDER_HOME=/home/clowder \
