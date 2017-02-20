@@ -21,7 +21,13 @@ def main():
     logger = logging.getLogger('extractor')
     logger.setLevel(logging.DEBUG)
 
-    register_extractor(registrationEndpoints)
+    # setup
+    extractors.setup(extractorName=extractorName,
+                     messageType=messageType,
+                     rabbitmqURL=rabbitmqURL,
+                     rabbitmqExchange=rabbitmqExchange)
+
+    extractors.register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
     extractors.connect_message_bus(extractorName=extractorName, 
@@ -98,24 +104,6 @@ def run_classify(inputfile, outputfile):
 
     while not os.path.isfile(outputfile) and not matlab_process.poll():
         time.sleep(0.1)
-
-
-def register_extractor(registrationEndpoints):
-    """Register extractor info with Clowder"""
-
-    logger.info("Registering extractor...")
-    headers = {'Content-Type': 'application/json'}
-    try:
-        with open('extractor_info.json') as info_file:
-            info = json.load(info_file)
-            # This makes it consistent: we only need to change the name at one place: config.py.
-            info["name"] = extractorName
-            for url in registrationEndpoints.split(','):
-                # Trim the URL in case there are spaces in the config.py string.
-                r = requests.post(url.strip(), headers=headers, data=json.dumps(info), verify=sslVerify)
-                logger.debug("Registering extractor with " +  url + " : " + r.text)
-    except Exception as e:
-        logger.error('Error in registering extractor: ' + str(e))
 
 
 if __name__ == "__main__":
