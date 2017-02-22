@@ -63,8 +63,8 @@ def process_file(parameters):
         # store results as metadata
         metadata = {
                 '@context': [context_url, 
-                    {'basic_caltech101_category': 'http://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.dbpedia#basic_caltech101_category',
-                     'basic_caltech101_score': 'http://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.dbpedia#basic_caltech101_score'}
+                    {'basic_caltech101_category': 'http://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.cv.caltech101#basic_caltech101_category',
+                     'basic_caltech101_score': 'http://clowder.ncsa.illinois.edu/clowder/api/extractors/ncsa.cv.caltech101#basic_caltech101_score'}
                 ],
                 'attachedTo': {'resourceType': 'file', 'id': parameters["fileid"]},
                 'agent': {
@@ -75,7 +75,7 @@ def process_file(parameters):
                             'basic_caltech101_score': score}
                 }
 
-        extractors.upload_file_metadata(mdata=metadata, parameters=parameters)
+        extractors.upload_file_metadata_jsonld(mdata=metadata, parameters=parameters)
 
     finally:
         if os.path.isfile(tmpfile):
