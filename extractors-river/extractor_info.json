@@ -6,7 +6,16 @@
     "author": "Liana Diesendruck <ldiesend@illinois.edu>",
     "contributors": ["Jong Lee <jonglee1@illinois.edu>", "Smruti Padhy <spadhy@illinois.edu>"],
     "contexts": [],
-    "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"},
+    "repository": [
+        {
+            "repType": "git",
+            "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"
+        },
+        {
+            "repType": "docker",
+            "repUrl": "clowder/extractors-river"
+        }
+    ],
     "external_services":[],
     "dependencies": ["OpenCV", "Imagemagick", "GDAL"],
     "bibtex": []
