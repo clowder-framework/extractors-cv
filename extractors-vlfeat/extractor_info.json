@@ -5,7 +5,12 @@
     "description": "Caltech 101 benchmark extractor",
     "author": "Liana Diesendruck <ldiesend@illinois.edu>",
     "contributors": ["Rob Kooper <kooper@illinois.edu>, Yan Zhao <yanzhao3@illinois.edu"],
-    "contexts": [],
+    "contexts": [
+        {
+            "basic_caltech101_category": "http://clowder.ncsa.illinois.edu/metadata/ncsa.cv.caltech101#basic_caltech101_category",
+            "basic_caltech101_score": "http://clowder.ncsa.illinois.edu/metadata/ncsa.cv.caltech101#basic_caltech101_score"
+        }
+    ],
     "repository": [
         {
             "repType": "git",
@@ -16,6 +21,11 @@
             "repUrl": "clowder/extractors-vlfeat"
         }
     ],
+    "process": {
+        "file": [
+            "image/*"
+        ]
+    },
     "dependencies": ["VLFeat", "Matlab"],
     "bibtex": ["misc{vedaldi08vlfeat, Author = {A. Vedaldi and B. Fulkerson}, Title = {{VLFeat}: An Open and Portable Library of Computer Vision Algorithms}, Year  = {2008}"]
 }
