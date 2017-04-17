@@ -13,7 +13,7 @@ clowder:
 
 # extractors
 caltech101:
-  image: clowder/extractors-caltech101
+  image: clowder/extractors-vlfeat
   links:
     - rabbitmq
   volumes:

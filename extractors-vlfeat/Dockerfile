@@ -1,5 +1,5 @@
 # FROM clowder/python-base
-FROM clowder/pyclowder:1
+FROM clowder/pyclowder:2
 MAINTAINER Rob Kooper <kooper@illinois.edu>
 
 # Location where matlab will be mounted
