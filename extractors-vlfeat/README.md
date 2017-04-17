@@ -2,26 +2,30 @@
 
 This extractor uses **Matlab** and **VLFeat** to classify images based on the Caltech 101 object categories. It was tested on a 64-bit Mac OS using Python 2.7.5, VLFeat 0.9.18, and Matlab R2013a.
 
-To use this extractor you will need pymedici installed. You can either install it, or you can create a link to the pymedici repository. Assuming that the pymedici repository is cloned in the same folder as this repository you can execute the following code `ln -s $(cd "../../pyMedici/pymedici" && pwd -P) pymedici`.
+## Installing and Running Extractor Outside of Docker
+To install and run the python extractor do the following:
 
-In config.py you will need to set the URL to point to rabbitmq (https://www.rabbitmq.com/uri-spec.html). For example to connect to rabbitmq running on the localhost with default parameters you can use the following URL: amqp://guest:guest@localhost:5672/%2f
+1. Setup a Python [virtual environment](https://virtualenv.pypa.io/)
+2. Install PyClowder2: ```pip install git+https://opensource.ncsa.illinois.edu/stash/scm/cats/pyclowder2.git```
+3. Start extractor: ```python caltech101extractor.py```
 
 Please, read the setup section carefully before proceeding.
 
-## Docker Build
+## Installing and Running Extractor Using Docker
+### Build Docker Image
 
 To build this docker container use
 
 ```
-docker build -t clowder/extractors-caltech101 .
+docker build -t clowder/extractors-vlfeat .
 ```
-
-This extractor assumes you will have mounted a completed matlab install at /matlab in the contiainer. You can install matlab on a ubuntu 64 bit machine and copy the resulting /usr/local/MATLAB/&lt;release&gt; folder.
+### Run Docker Container
+This extractor assumes you will have mounted a completed matlab install at /matlab in the container. You can install matlab on a ubuntu 64 bit machine and copy the resulting /usr/local/MATLAB/&lt;release&gt; folder.
 
 To run the extractor use:
 
 ```
-docker run --link rabbitmq:rabbitmq --volume ${PWD}/matlab:/matlab clowder/extractors-caltech101
+docker run --rm -i -t --link extractorsvlfeat_rabbitmq_1:rabbitmq --volume ${PWD}/matlab:/matlab clowder/extractors-vlfeat
 ```
 
 ## Overview
