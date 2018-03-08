@@ -1,20 +1,29 @@
 {
-    "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
-    "name": "ncsa.image.ocr",
-    "version": "1.0",
-    "description": "Simple OCR (Optical Character Recognition) extractor to extract text from an image",
-    "author": "Liana Diesendruck <ldiesend@illinois.edu>",
-    "contributors": ["Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
-    "contexts": [],
-    "repository": [
-        {
-            "repType": "git",
-            "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/extractors-cv.git"
-        },
-        {
-            "repType": "docker",
-            "repUrl": "clowder/extractors-ocr"
-        }
-    ],
-    "dependencies": ["tesseract"]
+  "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
+  "name": "ncsa.image.ocr",
+  "version": "1.0",
+  "description": "Simple OCR (Optical Character Recognition) extractor to extract text from an image",
+  "author": "Liana Diesendruck <ldiesend@illinois.edu>",
+  "contributors": ["Bing Zhang <bing@illinois.edu>", "Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
+  "contexts": [
+    {
+      "ocr_text": "http://clowder.ncsa.illinois.edu/metadata/ncsa.image.ocr#radius"
+    }
+  ],
+  "repository": [
+    {
+      "repType": "git",
+      "repUrl": "https://opensource.ncsa.illinois.edu/bitbucket/projects/CATS/repos/extractors-cv/browse/extractors-tesseract"},
+    {
+      "repType": "docker",
+      "repUrl": "clowder/extractors-tesseract"
+    }],
+  "process": {
+    "file": [
+      "image/*"
+    ]
+  },
+  "external_services": [],
+  "dependencies": ["tesseract"],
+  "bibtex": []
 }

@@ -18,6 +18,8 @@ if [ "$1" = 'extractor' ]; then
 
     if [ "$RABBITMQ_PORT_5672_TCP_ADDR" != "" ]; then
         # start extractor after rabbitmq is up
+	echo "RABBITMQ_PORT_5672_TCP_ADDR: " $RABBITMQ_PORT_5672_TCP_ADDR
+	echo "RABBITMQ_PORT_5672_TCP_PORT: " $RABBITMQ_PORT_5672_TCP_PORT
         for i in `seq 1 10`; do
             if nc -z $RABBITMQ_PORT_5672_TCP_ADDR $RABBITMQ_PORT_5672_TCP_PORT ; then
                 exec ./${MAIN_SCRIPT}
