@@ -7,7 +7,7 @@
   "contributors": ["Bing Zhang <bing@illinois.edu>", "Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
   "contexts": [
     {
-      "ocr_text": "http://clowder.ncsa.illinois.edu/metadata/ncsa.image.ocr#radius"
+      "ocr_text": "http://clowder.ncsa.illinois.edu/metadata/ncsa.image.ocr#ocr_text"
     }
   ],
   "repository": [
