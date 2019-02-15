@@ -4,7 +4,7 @@
     "version": "1.0",
     "description": "OpenCV face recognition extractor",
     "author": "Liana Diesendruck <ldiesend@illinois.edu>",
-    "contributors": ["Rob Kooper <kooper@illinois.edu>", "Smruti Padhy <spadhy@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
+    "contributors": ["Rob Kooper <kooper@illinois.edu>", "Smruti Padhy <spadhy@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>", "Mark Fredricksen <mfrdrcks@illinois.edu>"],
     "contexts": [],
     "repository": [
         {
@@ -16,5 +16,8 @@
             "repUrl": "clowder/extractors-opencv-faces"
         }
     ],
-    "dependencies": ["OpenCV"]
+    "dependencies": ["OpenCV"],
+    "process": {
+        "file": ["image/jpeg"]
+    }
 }
