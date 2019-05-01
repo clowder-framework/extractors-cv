@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+###Added 
+- Add process mimetype definition for face recognization extractor
 
 ## 0.4.0 - 2018-05-24
 

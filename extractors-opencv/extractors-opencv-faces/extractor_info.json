@@ -1,10 +1,10 @@
 {
     "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
     "name": "ncsa.cv.faces",
-    "version": "1.0",
+    "version": "1.0.1",
     "description": "OpenCV face recognition extractor",
     "author": "Liana Diesendruck <ldiesend@illinois.edu>",
-    "contributors": ["Rob Kooper <kooper@illinois.edu>", "Smruti Padhy <spadhy@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>", "Mark Fredricksen <mfrdrcks@illinois.edu>"],
+    "contributors": ["Rob Kooper <kooper@illinois.edu>", "Smruti Padhy <spadhy@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>", "Mark Fredricksen <mfrdrcks@illinois.edu>", "Bing Zhang <bing@illinois.edu>"],
     "contexts": [],
     "repository": [
         {
@@ -18,6 +18,6 @@
     ],
     "dependencies": ["OpenCV"],
     "process": {
-        "file": ["image/jpeg"]
+        "file": ["image/*"]
     }
 }

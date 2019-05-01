@@ -26,9 +26,6 @@ RUN apt-get -qq -y update && apt-get -y install \
     && mkdir -p /matlab \
     && rm -rf /var/lib/apt/lists/*   
 
-# Switch to clowder, copy files and be ready to run
-USER clowder
-
 # create vlfeat
 COPY entrypoint.sh *.py *.json /home/clowder/
 RUN wget -q -O /tmp/vlfeat-0.9.20-bin.tar.gz http://www.vlfeat.org/download/vlfeat-0.9.20-bin.tar.gz \
