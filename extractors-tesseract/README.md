@@ -22,15 +22,15 @@ A sample input file "browndog.png" and a sample output file "browndog.png.sample
 ## Test locally with Clowder
 1. In extractors-cv/extractors-tesseract/ folder run: 
       
-      docker build -t clowder/ocr:test .
+      ```docker build -t clowder/ocr:test .```
 
 2. In the tests subdirectory, run: 
 
-      docker-compose -f docker-compose.yml -f docker-compose.extractors.yml up -d
+      ```docker-compose -f docker-compose.yml -f docker-compose.extractors.yml up -d```
 
 3. Initialize Clowder: 
 
-      docker run -ti --rm --network tests_clowder clowder/mongo-init
+      ```docker run -ti --rm --network tests_clowder clowder/mongo-init```
 
 4. Enter email, first name, last name password, and admin: true when prompted.
 5. Navigate to localhost:9001 and login with credentials you created in step 4.
