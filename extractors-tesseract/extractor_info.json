@@ -1,10 +1,10 @@
 {
   "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
   "name": "ncsa.image.ocr",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Simple OCR (Optical Character Recognition) extractor to extract text from an image",
   "author": "Liana Diesendruck <ldiesend@illinois.edu>",
-  "contributors": ["Bing Zhang <bing@illinois.edu>", "Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>"],
+  "contributors": ["Bing Zhang <bing@illinois.edu>", "Rob Kooper <kooper@illinois.edu>", "Rui Liu <ruiliu@illinois.edu>", "Michael Johnson <mjohns44@illinois.edu>"],
   "contexts": [
     {
       "ocr_text": "http://clowder.ncsa.illinois.edu/metadata/ncsa.image.ocr#ocr_text"
@@ -25,5 +25,8 @@
   },
   "external_services": [],
   "dependencies": ["tesseract"],
-  "bibtex": []
+  "bibtex": [],
+  "labels": [
+    "Type/Image"
+  ]
 }
