@@ -36,7 +36,7 @@ A sample input file "browndog.png" and a sample output file "browndog.png.sample
 5. Navigate to localhost:9001 and login with credentials you created in step 4.
 6. Create a test space and dataset. Then click 'Select Files' and upload tests/browndog.png.
 7. Click on file and type submit for extraction.
-8. It may take a few minutes for you to be able to see the extractors available within Clowder
+8. It may take a few minutes for you to be able to see the extractors available within Clowder.
 9. Eventually you should see ocr in the list and click submit.
 10. Navigate back to file and click on metadata.
 11. You should see the ocr_text metadata present.
